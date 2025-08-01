@@ -61,7 +61,7 @@ docker build -t job-scheduler .
 # Run the container
 docker run -d \
   --name job-scheduler \
-  -p 3000:3000 \
+  -p 8081:3000 \
   --env-file .env \
   -v $(pwd)/jobs.yaml:/app/jobs.yaml:ro \
   -v $(pwd)/logs:/app/logs \
@@ -133,7 +133,7 @@ docker-compose logs --tail=20 job-scheduler
 ### Health Checks
 ```bash
 # Check job scheduler health
-curl http://localhost:3000/health
+curl http://localhost:8081/health
 
 # Check test API health
 curl http://localhost:8080/health
@@ -161,7 +161,7 @@ NODE_ENV=production
 - **Custom**: Create your own YAML file
 
 ### Docker Configuration
-- **Ports**: 3000 (scheduler), 8080 (test API)
+- **Ports**: 8081 (scheduler), 8080 (test API)
 - **Volumes**: 
   - `./jobs.yaml:/app/jobs.yaml:ro` (job configuration)
   - `./logs:/app/logs` (log persistence)
@@ -177,7 +177,7 @@ NODE_ENV=production
 docker-compose logs job-scheduler
 
 # Check if ports are available
-netstat -tulpn | grep :3000
+netstat -tulpn | grep :8081
 netstat -tulpn | grep :8080
 ```
 

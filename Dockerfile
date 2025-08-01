@@ -36,7 +36,7 @@ RUN chown -R nodejs:nodejs /app
 USER nodejs
 
 # Expose port (if needed for health checks)
-EXPOSE 3000
+EXPOSE 8081
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
