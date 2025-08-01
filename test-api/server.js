@@ -81,9 +81,59 @@ app.post('/report/afternoon', (req, res) => {
       }
     };
 
-    console.log('✅ KPI Report generated successfully');
+    console.log('✅ KPI Afternoon Report generated successfully');
     res.json(response);
   }, 1000); // Simulate 1 second processing time
+});
+
+// KPI Evening Report endpoint
+app.post('/report/evening', (req, res) => {
+  // Check for Authorization header
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      status: 'error',
+      message: 'Missing or invalid Authorization header',
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Simulate processing time
+  setTimeout(() => {
+    const response = {
+      status: 'success',
+      timestamp: new Date().toISOString(),
+      data: {
+        report_type: 'evening_kpi',
+        generated_at: new Date().toISOString(),
+        end_of_day_summary: {
+          total_calls: Math.floor(Math.random() * 200) + 50,
+          avg_duration: `${Math.floor(Math.random() * 8) + 2}m ${Math.floor(Math.random() * 60)}s`,
+          success_rate: (Math.random() * 0.4 + 0.6).toFixed(2),
+          peak_hours: ['9:00', '11:00', '15:00', '17:00'],
+          daily_highlights: [
+            'Record number of calls handled today',
+            'Customer satisfaction improved by 15%',
+            'New feature adoption rate at 78%'
+          ],
+          top_performers: [
+            { name: 'Sarah Wilson', calls: 25, avg_duration: '6m 30s', satisfaction: '4.8/5' },
+            { name: 'Mike Chen', calls: 22, avg_duration: '5m 45s', satisfaction: '4.7/5' },
+            { name: 'Lisa Rodriguez', calls: 20, avg_duration: '7m 15s', satisfaction: '4.9/5' }
+          ]
+        },
+        metrics: {
+          response_time: `${Math.floor(Math.random() * 300) + 100}ms`,
+          error_rate: (Math.random() * 0.08).toFixed(3),
+          uptime: '99.9%',
+          daily_trend: 'increasing'
+        }
+      }
+    };
+
+    console.log('✅ KPI Evening Report generated successfully');
+    res.json(response);
+  }, 1200); // Simulate 1.2 seconds processing time
 });
 
 // Catch-all for undefined routes
@@ -117,5 +167,6 @@ app.listen(PORT, () => {
   console.log(`   GET  http://localhost:${PORT}/health`);
   console.log(`   GET  http://localhost:${PORT}/status`);
   console.log(`   POST http://localhost:${PORT}/report/afternoon`);
+  console.log(`   POST http://localhost:${PORT}/report/evening`);
   console.log(`📝 Ready to receive KPI job requests!`);
 }); 
