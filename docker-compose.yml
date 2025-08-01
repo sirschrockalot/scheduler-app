@@ -20,6 +20,9 @@ services:
       # Mount .env file (optional, can also use environment variables)
       - ./.env:/app/.env:ro
     restart: unless-stopped
+    networks:
+      - default
+      - app-network
     healthcheck:
       test: ["CMD", "node", "-e", "console.log('Health check passed')"]
       interval: 30s
@@ -45,4 +48,7 @@ services:
 
 networks:
   default:
-    name: job-scheduler-network 
+    name: job-scheduler-network
+  app-network:
+    external: true
+    name: slack-kpi-service_app-network 
