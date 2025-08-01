@@ -11,6 +11,7 @@ services:
       - JWT_TOKEN=${JWT_TOKEN}
       - AIRCALL_API_TOKEN=${AIRCALL_API_TOKEN}
       - LOG_LEVEL=info
+      - TZ=America/Chicago
     volumes:
       # Mount logs directory for persistence
       - ./logs:/app/logs

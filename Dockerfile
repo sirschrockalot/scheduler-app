@@ -1,11 +1,14 @@
 # Use Node.js 18 Alpine for smaller image size
 FROM node:18-alpine
 
+# Set timezone to Central Time
+ENV TZ=America/Chicago
+
 # Set working directory
 WORKDIR /app
 
-# Install dependencies for native modules
-RUN apk add --no-cache python3 make g++
+# Install dependencies for native modules and timezone data
+RUN apk add --no-cache python3 make g++ tzdata
 
 # Copy package files
 COPY package*.json ./

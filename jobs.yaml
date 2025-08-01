@@ -10,7 +10,7 @@ global:
 jobs:
   # KPI Afternoon Report - Weekdays at 1:01 PM
   - name: kpi-afternoon-report
-    schedule: "0 1 13 * * 1-5"  # Weekdays at 1:01 PM
+    schedule: "0 1 13 * * 1-5"  # Weekdays at 1:01 PM (CST)
     url: "http://test-api-server:8080/report/afternoon"
     method: POST
     headers:
@@ -24,7 +24,7 @@ jobs:
 
   # KPI Evening Report - Weekdays at 6:30 PM
   - name: kpi-evening-report
-    schedule: "0 30 18 * * 1-5"  # Weekdays at 6:30 PM
+    schedule: "0 30 18 * * 1-5"  # Weekdays at 6:30 PM (CST)
     url: "http://test-api-server:8080/report/evening"
     method: POST
     headers:
@@ -44,4 +44,14 @@ jobs:
     timeout: 5000
     retries: 2
     enabled: false
-    description: "Health check for test API server" 
+    description: "Health check for test API server"
+
+  # Test job that runs every 30 seconds
+  - name: test-job-30s
+    schedule: "*/30 * * * * *"  # Every 30 seconds
+    url: "http://test-api-server:8080/health"
+    method: GET
+    timeout: 5000
+    retries: 1
+    enabled: true
+    description: "Test job that runs every 30 seconds to verify scheduler" 

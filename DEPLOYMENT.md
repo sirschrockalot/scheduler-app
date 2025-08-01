@@ -162,6 +162,7 @@ NODE_ENV=production
 
 ### Docker Configuration
 - **Ports**: 8081 (scheduler), 8080 (test API)
+- **Timezone**: Central Time (CST/CDT)
 - **Volumes**: 
   - `./jobs.yaml:/app/jobs.yaml:ro` (job configuration)
   - `./logs:/app/logs` (log persistence)
