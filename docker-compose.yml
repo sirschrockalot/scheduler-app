@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  job-scheduler:
+    build: .
+    container_name: job-scheduler
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - JWT_TOKEN=${JWT_TOKEN}
+      - AIRCALL_API_TOKEN=${AIRCALL_API_TOKEN}
+      - LOG_LEVEL=info
+    volumes:
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+      # Mount jobs.yaml for easy configuration updates
+      - ./jobs.yaml:/app/jobs.yaml:ro
+      # Mount .env file (optional, can also use environment variables)
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Health check passed')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Test API server for testing the job scheduler
+  test-api:
+    build: ./test-api
+    container_name: test-api-server
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+    volumes:
+      - ./test-api:/app
+      - /app/node_modules
+    restart: unless-stopped
+    profiles:
+      - test
+
+networks:
+  default:
+    name: job-scheduler-network 

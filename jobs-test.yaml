@@ -1,0 +1,37 @@
+# Test Configuration for KPI Afternoon Report Job
+# This file is used for testing the job scheduler
+
+global:
+  defaultTimeout: 10000
+  defaultRetries: 3
+  defaultHeaders:
+    Content-Type: application/json
+
+jobs:
+  # Test KPI job that runs every 30 seconds for testing
+  - name: kpi-afternoon-report-test
+    schedule: "*/30 * * * * *"  # Every 30 seconds for testing
+    url: "http://test-api-server:8080/report/afternoon"
+    method: POST
+    headers:
+      Authorization: "Bearer ${JWT_TOKEN}"
+      X-Custom-Header: "kpi-test"
+      Content-Type: "application/json"
+    data:
+      test_mode: true
+      timestamp: "${NOW}"
+      action: "generate_kpi_report"
+    timeout: 15000
+    retries: 2
+    enabled: true
+    description: "Test KPI job that runs every 30 seconds for testing purposes"
+
+  # Health check job
+  - name: health-check-test
+    schedule: "0 */1 * * * *"  # Every minute
+    url: "http://test-api-server:8080/health"
+    method: GET
+    timeout: 5000
+    retries: 2
+    enabled: true
+    description: "Health check for test API server" 
