@@ -62,20 +62,53 @@ export class YamlManager {
    * Convert YAML job config to internal job config
    */
   private convertYamlJobToJobConfig(yamlJob: YamlJobConfig, global?: YamlJobFile['global']): JobConfig {
+    // Process environment variable substitution
+    const processedHeaders = this.substituteEnvironmentVariables({
+      ...global?.defaultHeaders,
+      ...yamlJob.headers
+    });
+
+    const processedData = this.substituteEnvironmentVariables(yamlJob.data);
+    const processedUrl = this.substituteEnvironmentVariables(yamlJob.url);
+
     return {
       name: yamlJob.name,
       cronExpression: yamlJob.schedule,
-      url: yamlJob.url,
+      url: processedUrl,
       method: yamlJob.method,
-      headers: {
-        ...global?.defaultHeaders,
-        ...yamlJob.headers
-      },
-      data: yamlJob.data,
+      headers: processedHeaders,
+      data: processedData,
       timeout: yamlJob.timeout || global?.defaultTimeout || 10000,
       retries: yamlJob.retries || global?.defaultRetries || 3,
       enabled: yamlJob.enabled !== false
     };
+  }
+
+  /**
+   * Substitute environment variables in strings and objects
+   */
+  private substituteEnvironmentVariables(value: any): any {
+    if (typeof value === 'string') {
+      return value.replace(/\$\{([^}]+)\}/g, (match, envVar) => {
+        const envValue = process.env[envVar];
+        if (envValue === undefined) {
+          console.warn(`⚠️ Environment variable ${envVar} not found, using literal value`);
+          return match;
+        }
+        return envValue;
+      });
+    } else if (typeof value === 'object' && value !== null) {
+      if (Array.isArray(value)) {
+        return value.map(item => this.substituteEnvironmentVariables(item));
+      } else {
+        const result: any = {};
+        for (const [key, val] of Object.entries(value)) {
+          result[key] = this.substituteEnvironmentVariables(val);
+        }
+        return result;
+      }
+    }
+    return value;
   }
 
   /**
