@@ -1,27 +1,7 @@
 import cron from 'node-cron';
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import winston from 'winston';
-
-export interface JobConfig {
-  name: string;
-  cronExpression: string;
-  url: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  headers?: Record<string, string>;
-  data?: any;
-  timeout?: number;
-  retries?: number;
-}
-
-export interface JobResult {
-  success: boolean;
-  jobName: string;
-  timestamp: Date;
-  response?: any;
-  error?: string;
-  statusCode?: number;
-  executionTime: number;
-}
+import { JobConfig, JobResult, SchedulerStatus } from './types';
 
 export class JobScheduler {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
@@ -248,7 +228,7 @@ export class JobScheduler {
   /**
    * Get scheduler status
    */
-  public getStatus(): { totalJobs: number; runningJobs: number; jobNames: string[] } {
+  public getStatus(): SchedulerStatus {
     const jobNames = this.getJobNames();
     const runningJobs = jobNames.filter(name => this.isJobRunning(name)).length;
     
@@ -257,5 +237,39 @@ export class JobScheduler {
       runningJobs,
       jobNames
     };
+  }
+
+  /**
+   * Update jobs from YAML configuration
+   */
+  public updateJobsFromYaml(jobs: JobConfig[]): void {
+    // Stop all existing jobs
+    this.stop();
+    
+    // Clear existing jobs
+    this.jobs.clear();
+    
+    // Register new jobs
+    jobs.forEach(job => {
+      try {
+        this.registerJob(job);
+      } catch (error) {
+        this.logger.error(`Failed to register job '${job.name}': ${error}`);
+      }
+    });
+    
+    // Restart the scheduler
+    this.start();
+    
+    this.logger.info(`Updated scheduler with ${jobs.length} jobs from YAML configuration`);
+  }
+
+  /**
+   * Get all registered job configurations
+   */
+  public getJobConfigs(): JobConfig[] {
+    // This would need to be implemented if you want to track job configs
+    // For now, return empty array as we don't store the original configs
+    return [];
   }
 } 

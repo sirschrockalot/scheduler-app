@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
-import { JobScheduler, JobConfig } from './scheduler';
+import { JobScheduler } from './scheduler';
+import { JobConfig } from './types';
+import { YamlManager } from './yaml-manager';
 
 // Load environment variables
 dotenv.config();
@@ -12,25 +14,16 @@ if (!process.env['JWT_TOKEN']) {
 
 // Create scheduler instance
 const scheduler = new JobScheduler();
+const yamlManager = new YamlManager();
 
-// Define test job configuration
-const testJob: JobConfig = {
-  name: 'test-api-call',
-  cronExpression: '*/5 * * * * *', // Every 5 seconds
-  url: 'https://httpbin.org/bearer',
-  method: 'GET',
-  timeout: 10000, // 10 seconds
-  retries: 3
-};
+// Create sample YAML file if it doesn't exist
+yamlManager.createSampleYamlFile();
 
-// Register the test job
-try {
-  scheduler.registerJob(testJob);
-  console.log('✅ Test job registered successfully');
-} catch (error) {
-  console.error('❌ Failed to register test job:', error);
-  process.exit(1);
-}
+// Initialize YAML manager with callback to update scheduler
+yamlManager.initialize((jobs: JobConfig[]) => {
+  console.log(`📄 Updating scheduler with ${jobs.length} jobs from YAML`);
+  scheduler.updateJobsFromYaml(jobs);
+});
 
 // Start the scheduler
 scheduler.start();
@@ -42,6 +35,7 @@ console.log('📊 Scheduler Status:', status);
 // Handle graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n🛑 Received SIGINT, shutting down gracefully...');
+  yamlManager.stopWatching();
   scheduler.stop();
   console.log('👋 Scheduler stopped. Goodbye!');
   process.exit(0);
@@ -49,6 +43,7 @@ process.on('SIGINT', () => {
 
 process.on('SIGTERM', () => {
   console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+  yamlManager.stopWatching();
   scheduler.stop();
   console.log('👋 Scheduler stopped. Goodbye!');
   process.exit(0);
@@ -68,5 +63,6 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 console.log('🚀 Job Scheduler started successfully!');
+console.log('📄 YAML-based job configuration enabled');
 console.log('📝 Check logs for job execution details');
 console.log('⏹️ Press Ctrl+C to stop the scheduler'); 
