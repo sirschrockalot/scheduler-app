@@ -25,7 +25,7 @@ jobs:
   # KPI Evening Report - Weekdays at 6:30 PM
   - name: kpi-evening-report
     schedule: "0 30 18 * * 1-5"  # Weekdays at 6:30 PM (CST)
-    url: "http://slack-kpi-service-aircall-slack-agent-1:3000/report/evening"
+    url: "http://slack-kpi-service-aircall-slack-agent-1:3000/report/night"
     method: POST
     headers:
       Authorization: "Bearer ${JWT_TOKEN}"
@@ -34,7 +34,7 @@ jobs:
     timeout: 15000
     retries: 2
     enabled: true
-    description: "KPI evening report generation at 6:30 PM"
+    description: "KPI evening report generation at 6:30 PM (using afternoon endpoint)"
 
   # Health check job
   - name: health-check-test
@@ -57,5 +57,5 @@ jobs:
       Content-Type: "application/json"
     timeout: 5000
     retries: 1
-    enabled: true
+    enabled: false
     description: "Test job that runs every minute to verify scheduler and endpoint" 

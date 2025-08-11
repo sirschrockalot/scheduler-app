@@ -19,18 +19,19 @@ const yamlManager = new YamlManager();
 // Create sample YAML file if it doesn't exist
 yamlManager.createSampleYamlFile();
 
-// Initialize YAML manager with callback to update scheduler
+// Initialize YAML manager and start the scheduler
 yamlManager.initialize((jobs: JobConfig[]) => {
   console.log(`📄 Updating scheduler with ${jobs.length} jobs from YAML`);
   scheduler.updateJobsFromYaml(jobs);
+  
+  // Log status after jobs are loaded and started
+  const status = scheduler.getStatus();
+  console.log('📊 Scheduler Status:', status);
+  console.log('🚀 Job Scheduler started successfully!');
+  console.log('📄 YAML-based job configuration enabled');
+  console.log('📝 Check logs for job execution details');
+  console.log('⏹️ Press Ctrl+C to stop the scheduler');
 });
-
-// Start the scheduler
-scheduler.start();
-
-// Log initial status
-const status = scheduler.getStatus();
-console.log('📊 Scheduler Status:', status);
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
@@ -60,9 +61,4 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
   scheduler.stop();
   process.exit(1);
-});
-
-console.log('🚀 Job Scheduler started successfully!');
-console.log('📄 YAML-based job configuration enabled');
-console.log('📝 Check logs for job execution details');
-console.log('⏹️ Press Ctrl+C to stop the scheduler'); 
+}); 

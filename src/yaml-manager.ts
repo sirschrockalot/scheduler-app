@@ -19,8 +19,11 @@ export class YamlManager {
   public initialize(onJobsUpdate: (jobs: JobConfig[]) => void): void {
     this.onJobsUpdate = onJobsUpdate;
     
-    // Load initial jobs
-    this.loadJobsFromYaml();
+    // Load initial jobs and update scheduler
+    const initialJobs = this.loadJobsFromYaml();
+    if (this.onJobsUpdate && initialJobs.length > 0) {
+      this.onJobsUpdate(initialJobs);
+    }
     
     // Start watching for file changes
     this.startWatching();
