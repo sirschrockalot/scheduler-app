@@ -11,7 +11,7 @@ jobs:
   # KPI Afternoon Report - Weekdays at 1:01 PM
   - name: kpi-afternoon-report
     schedule: "0 1 13 * * 1-5"  # Weekdays at 1:01 PM (CST)
-    url: "http://slack-kpi-service-aircall-slack-agent-1:3000/report/afternoon"
+    url: "http://slack-kpi-service-aircall-slack-agent-1:6000/report/afternoon"
     method: POST
     headers:
       Authorization: "Bearer ${JWT_TOKEN}"
@@ -25,7 +25,7 @@ jobs:
   # KPI Evening Report - Weekdays at 6:30 PM
   - name: kpi-evening-report
     schedule: "0 30 18 * * 1-5"  # Weekdays at 6:30 PM (CST)
-    url: "http://slack-kpi-service-aircall-slack-agent-1:3000/report/night"
+    url: "http://slack-kpi-service-aircall-slack-agent-1:6000/report/night"
     method: POST
     headers:
       Authorization: "Bearer ${JWT_TOKEN}"
@@ -49,7 +49,7 @@ jobs:
   # Test job that runs every minute
   - name: test-job-minute
     schedule: "0 * * * * *"  # Every minute
-    url: "http://slack-kpi-service-aircall-slack-agent-1:3000/report/afternoon"
+    url: "http://slack-kpi-service-aircall-slack-agent-1:6000/report/afternoon"
     method: POST
     headers:
       Authorization: "Bearer ${JWT_TOKEN}"

@@ -68,7 +68,8 @@ export class JobScheduler {
     const task = cron.schedule(config.cronExpression, async () => {
       await this.executeJob(config);
     }, {
-      scheduled: false
+      scheduled: false,
+      timezone: process.env.TZ || 'America/Chicago'
     });
 
     this.jobs.set(config.name, task);
