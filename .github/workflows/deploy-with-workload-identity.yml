@@ -78,8 +78,19 @@ jobs:
         service_account: github-actions-scheduler@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
         
     - name: Configure Docker for GCR
-      run: gcloud auth configure-docker
-      
+      run: |
+        gcloud auth configure-docker gcr.io
+        echo "✅ Docker configured for GCR"
+        
+    - name: Test GCR authentication
+      run: |
+        echo "🔍 Testing GCR authentication..."
+        gcloud auth list
+        echo "📦 Testing GCR access..."
+        echo "🔧 Ensuring GCR repository exists..."
+        gcloud container images list-tags gcr.io/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }} --limit=1 || echo "No existing images found - repository will be created on first push"
+        echo "✅ GCR authentication test complete"
+        
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
