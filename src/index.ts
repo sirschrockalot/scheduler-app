@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { JobScheduler } from './scheduler';
 import { JobConfig } from './types';
 import { YamlManager } from './yaml-manager';
+import { createServer } from 'http';
 
 // Load environment variables
 dotenv.config();
@@ -15,6 +16,31 @@ if (!process.env['JWT_TOKEN']) {
 // Create scheduler instance
 const scheduler = new JobScheduler();
 const yamlManager = new YamlManager();
+
+// Create simple HTTP server for health checks
+const server = createServer((req, res) => {
+  if (req.url === '/health' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+      status: 'healthy', 
+      timestamp: new Date().toISOString(),
+      service: 'job-scheduler'
+    }));
+  } else if (req.url === '/status' && req.method === 'GET') {
+    const status = scheduler.getStatus();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(status));
+  } else {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Not found' }));
+  }
+});
+
+// Start HTTP server
+const PORT = process.env['PORT'] || 8081;
+server.listen(PORT, () => {
+  console.log(`🌐 Health check server listening on port ${PORT}`);
+});
 
 // Create sample YAML file if it doesn't exist
 yamlManager.createSampleYamlFile();
@@ -38,27 +64,35 @@ process.on('SIGINT', () => {
   console.log('\n🛑 Received SIGINT, shutting down gracefully...');
   yamlManager.stopWatching();
   scheduler.stop();
-  console.log('👋 Scheduler stopped. Goodbye!');
-  process.exit(0);
+  server.close(() => {
+    console.log('👋 HTTP server stopped. Goodbye!');
+    process.exit(0);
+  });
 });
 
 process.on('SIGTERM', () => {
   console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
   yamlManager.stopWatching();
   scheduler.stop();
-  console.log('👋 Scheduler stopped. Goodbye!');
-  process.exit(0);
+  server.close(() => {
+    console.log('👋 HTTP server stopped. Goodbye!');
+    process.exit(0);
+  });
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   console.error('💥 Uncaught Exception:', error);
   scheduler.stop();
-  process.exit(1);
+  server.close(() => {
+    process.exit(1);
+  });
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
   scheduler.stop();
-  process.exit(1);
+  server.close(() => {
+    process.exit(1);
+  });
 }); 

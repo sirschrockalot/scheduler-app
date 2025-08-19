@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: job-scheduler-ingress
+  namespace: scheduler-app
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "job-scheduler-ip"  # Optional: reserve static IP
+    cloud.google.com/load-balancer-type: "External"
+spec:
+  rules:
+  - host: job-scheduler.your-domain.com  # Replace with your actual domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: job-scheduler-service
+            port:
+              number: 8081
+  # Optional: TLS configuration
+  # tls:
+  # - hosts:
+  #   - job-scheduler.your-domain.com
+  #   secretName: job-scheduler-tls

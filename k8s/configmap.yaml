@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-config
+  namespace: scheduler-app
+data:
+  jobs.yaml: |
+    # Job Scheduler Configuration for GKE
+    # This file defines jobs that will be executed by the scheduler
+
+    global:
+      defaultTimeout: 10000
+      defaultRetries: 3
+      defaultHeaders:
+        Content-Type: application/json
+
+    jobs:
+      # KPI Afternoon Report - Weekdays at 1:01 PM
+      - name: kpi-afternoon-report
+        schedule: "0 1 13 * * 1-5"  # Weekdays at 1:01 PM (CST)
+        url: "http://slack-kpi-service.slack-kpi-service.svc.cluster.local:6000/report/afternoon"
+        method: POST
+        headers:
+          Authorization: "Bearer ${JWT_TOKEN}"
+          X-Custom-Header: "kpi-app"
+          Content-Type: "application/json"
+        timeout: 15000
+        retries: 2
+        enabled: true
+        description: "KPI afternoon report generation"
+
+      # KPI Evening Report - Weekdays at 6:30 PM
+      - name: kpi-evening-report
+        schedule: "0 30 18 * * 1-5"  # Weekdays at 6:30 PM (CST)
+        url: "http://slack-kpi-service.slack-kpi-service.svc.cluster.local:6000/report/night"
+        method: POST
+        headers:
+          Authorization: "Bearer ${JWT_TOKEN}"
+          X-Custom-Header: "kpi-app"
+          Content-Type: "application/json"
+        timeout: 15000
+        retries: 2
+        enabled: true
+        description: "KPI evening report generation at 6:30 PM"
+
+      # Health check job for Slack-KPI-Service
+      - name: kpi-service-health-check
+        schedule: "0 */5 * * * *"  # Every 5 minutes
+        url: "http://slack-kpi-service.slack-kpi-service.svc.cluster.local:6000/health"
+        method: GET
+        timeout: 5000
+        retries: 2
+        enabled: true
+        description: "Health check for Slack-KPI-Service"
+
+      # Test job that runs every 10 minutes (for debugging)
+      - name: test-kpi-endpoint
+        schedule: "0 */10 * * * *"  # Every 10 minutes
+        url: "http://slack-kpi-service.slack-kpi-service.svc.cluster.local:6000/report/afternoon"
+        method: POST
+        headers:
+          Authorization: "Bearer ${JWT_TOKEN}"
+          X-Custom-Header: "test-job"
+          Content-Type: "application/json"
+        data:
+          test_mode: true
+          timestamp: "${NOW}"
+          action: "test_kpi_endpoint"
+        timeout: 5000
+        retries: 1
+        enabled: false
+        description: "Test job to verify KPI service connectivity"

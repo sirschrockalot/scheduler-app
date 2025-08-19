@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: job-scheduler
+  namespace: scheduler-app
+  labels:
+    app: job-scheduler
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: job-scheduler
+  template:
+    metadata:
+      labels:
+        app: job-scheduler
+        version: v1
+    spec:
+      containers:
+      - name: job-scheduler
+        image: gcr.io/YOUR_PROJECT_ID/job-scheduler:latest  # Replace with your actual GCR image
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8081
+          name: http
+        env:
+        - name: JWT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: scheduler-secrets
+              key: JWT_TOKEN
+        - name: AIRCALL_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: scheduler-secrets
+              key: AIRCALL_API_TOKEN
+        - name: NODE_ENV
+          valueFrom:
+            secretKeyRef:
+              name: scheduler-secrets
+              key: NODE_ENV
+        - name: LOG_LEVEL
+          valueFrom:
+            secretKeyRef:
+              name: scheduler-secrets
+              key: LOG_LEVEL
+        - name: TZ
+          valueFrom:
+            secretKeyRef:
+              name: scheduler-secrets
+              key: TZ
+        volumeMounts:
+        - name: scheduler-config
+          mountPath: /app/jobs.yaml
+          subPath: jobs.yaml
+        - name: logs-volume
+          mountPath: /app/logs
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: scheduler-config
+        configMap:
+          name: scheduler-config
+      - name: logs-volume
+        emptyDir: {}
+      restartPolicy: Always
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
