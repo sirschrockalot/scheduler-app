@@ -1,0 +1,90 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+
+jobs:
+  validate:
+    name: Validate and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run linting
+      run: npm run lint
+      
+    - name: Run tests
+      run: npm test
+      
+    - name: Build TypeScript
+      run: npm run build
+      
+    - name: Validate Kubernetes manifests
+      run: |
+        # Check if kubectl is available (for syntax validation)
+        if command -v kubectl &> /dev/null; then
+          echo "Validating Kubernetes manifests..."
+          kubectl apply --dry-run=client -f k8s/namespace.yaml
+          kubectl apply --dry-run=client -f k8s/configmap.yaml
+          kubectl apply --dry-run=client -f k8s/deployment.yaml
+          kubectl apply --dry-run=client -f k8s/service.yaml
+          kubectl apply --dry-run=client -f k8s/network-policy.yaml
+          echo "✅ All Kubernetes manifests are valid"
+        else
+          echo "⚠️ kubectl not available, skipping Kubernetes validation"
+        fi
+        
+    - name: Test Docker build
+      run: docker build -t job-scheduler .
+      
+    - name: Security scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'job-scheduler:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run npm audit
+      run: npm audit --audit-level=moderate
+      
+    - name: Check for secrets in code
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: .
+        base: ${{ github.event.pull_request.base.sha }}
+        head: ${{ github.event.pull_request.head.sha }}
+        extra_args: --only-verified --format json
+        
+    - name: Upload TruffleHog results
+      uses: actions/upload-artifact@v3
+      with:
+        name: trufflehog-results
+        path: trufflehog-results.json

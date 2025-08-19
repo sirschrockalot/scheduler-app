@@ -1,0 +1,127 @@
+name: Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+        - staging
+        - production
+        - development
+      image_tag:
+        description: 'Docker image tag to deploy'
+        required: false
+        default: 'latest'
+      force_redeploy:
+        description: 'Force redeploy even if no changes'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME }}
+  GKE_ZONE: ${{ secrets.GKE_ZONE }}
+  REGISTRY: gcr.io
+  IMAGE_NAME: job-scheduler
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        
+    - name: Get GKE credentials
+      run: |
+        gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
+          --zone ${{ env.GKE_ZONE }} \
+          --project ${{ env.PROJECT_ID }}
+          
+    - name: Update Kubernetes manifests
+      run: |
+        # Update deployment.yaml with correct image
+        IMAGE_TAG="${{ inputs.image_tag }}"
+        if [ "$IMAGE_TAG" = "latest" ]; then
+          IMAGE_TAG="${{ github.sha }}"
+        fi
+        
+        sed -i "s|gcr.io/YOUR_PROJECT_ID/job-scheduler:latest|${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG|g" k8s/deployment.yaml
+        
+        # Update secrets with GitHub secrets
+        if [ -n "${{ secrets.JWT_TOKEN }}" ]; then
+          JWT_TOKEN_B64=$(echo -n "${{ secrets.JWT_TOKEN }}" | base64)
+          sed -i "s|eW91cl9qd3RfdG9rZW5faGVyZQ==|$JWT_TOKEN_B64|g" k8s/secret.yaml
+        fi
+        
+        if [ -n "${{ secrets.AIRCALL_API_TOKEN }}" ]; then
+          AIRCALL_TOKEN_B64=$(echo -n "${{ secrets.AIRCALL_API_TOKEN }}" | base64)
+          sed -i "s|eW91cl9haXJjYWxsX3Rva2VuX2hlcmU=|$AIRCALL_TOKEN_B64|g" k8s/secret.yaml
+        fi
+        
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f k8s/namespace.yaml
+        kubectl apply -f k8s/secret.yaml
+        kubectl apply -f k8s/configmap.yaml
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+        kubectl apply -f k8s/network-policy.yaml
+        
+    - name: Wait for deployment
+      run: |
+        kubectl wait --for=condition=available --timeout=300s deployment/job-scheduler -n scheduler-app
+        
+    - name: Verify deployment
+      run: |
+        echo "=== Pod Status ==="
+        kubectl get pods -n scheduler-app
+        echo ""
+        echo "=== Service Status ==="
+        kubectl get svc -n scheduler-app
+        echo ""
+        echo "=== Deployment Status ==="
+        kubectl get deployment -n scheduler-app
+        
+    - name: Test health endpoint
+      run: |
+        echo "Testing health endpoint..."
+        kubectl exec -n scheduler-app deployment/job-scheduler -- curl -s http://localhost:8081/health
+        echo ""
+        echo "Testing status endpoint..."
+        kubectl exec -n scheduler-app deployment/job-scheduler -- curl -s http://localhost:8081/status
+        
+    - name: Check KPI service connectivity
+      run: |
+        echo "Testing KPI service connectivity..."
+        kubectl exec -n scheduler-app deployment/job-scheduler -- nslookup slack-kpi-service.slack-kpi-service.svc.cluster.local || echo "⚠️ DNS resolution failed"
+        
+        echo "Testing KPI service health..."
+        kubectl exec -n scheduler-app deployment/job-scheduler -- curl -s http://slack-kpi-service.slack-kpi-service.svc.cluster.local:6000/health || echo "⚠️ KPI service health check failed"
+        
+    - name: Deployment summary
+      run: |
+        echo "🎉 Deployment to ${{ inputs.environment }} completed successfully!"
+        echo ""
+        echo "📊 Deployment Details:"
+        echo "- Environment: ${{ inputs.environment }}"
+        echo "- Image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ inputs.image_tag }}"
+        echo "- Namespace: scheduler-app"
+        echo "- Timestamp: $(date -u)"
+        echo ""
+        echo "🔍 To monitor the deployment:"
+        echo "kubectl logs -f -n scheduler-app deployment/job-scheduler"
+        echo ""
+        echo "🔧 To access the pod:"
+        echo "kubectl exec -it -n scheduler-app deployment/job-scheduler -- /bin/sh"
