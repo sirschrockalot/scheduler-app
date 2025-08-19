@@ -33,26 +33,46 @@ gcloud services enable cloudresourcemanager.googleapis.com --project="$GCP_PROJE
 
 # Create Workload Identity Pool
 echo "🏊 Creating Workload Identity Pool..."
-gcloud iam workload-identity-pools create "github-actions" \
-    --project="$GCP_PROJECT_ID" \
-    --location="global" \
-    --display-name="GitHub Actions Pool"
+if ! gcloud iam workload-identity-pools describe "scheduler-app-github-actions" --location="global" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
+    gcloud iam workload-identity-pools create "scheduler-app-github-actions" \
+        --project="$GCP_PROJECT_ID" \
+        --location="global" \
+        --display-name="Scheduler GitHub Actions"
+    echo "✅ Workload Identity Pool created"
+else
+    echo "✅ Workload Identity Pool already exists"
+fi
 
 # Create Workload Identity Provider
 echo "🔑 Creating Workload Identity Provider..."
-gcloud iam workload-identity-pools providers create-oidc "github-actions" \
-    --project="$GCP_PROJECT_ID" \
-    --location="global" \
-    --workload-identity-pool="github-actions" \
-    --issuer-uri="https://token.actions.githubusercontent.com" \
-    --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository"
+if ! gcloud iam workload-identity-pools providers describe "github-actions" --location="global" --workload-identity-pool="scheduler-app-github-actions" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
+    gcloud iam workload-identity-pools providers create-oidc "github-actions" \
+        --project="$GCP_PROJECT_ID" \
+        --location="global" \
+        --workload-identity-pool="scheduler-app-github-actions" \
+        --issuer-uri="https://token.actions.githubusercontent.com" \
+        --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+        --attribute-condition="attribute.repository=='$GITHUB_REPO'"
+    echo "✅ Workload Identity Provider created"
+else
+    echo "✅ Workload Identity Provider already exists"
+fi
 
 # Create Service Account
 echo "👤 Creating Service Account..."
-gcloud iam service-accounts create "github-actions-scheduler" \
-    --project="$GCP_PROJECT_ID" \
-    --display-name="GitHub Actions Scheduler Service Account" \
-    --description="Service account for GitHub Actions to deploy scheduler app"
+if ! gcloud iam service-accounts describe "github-actions-scheduler@$GCP_PROJECT_ID.iam.gserviceaccount.com" --project="$GCP_PROJECT_ID" >/dev/null 2>&1; then
+    gcloud iam service-accounts create "github-actions-scheduler" \
+        --project="$GCP_PROJECT_ID" \
+        --display-name="GitHub Actions Scheduler Service Account" \
+        --description="Service account for GitHub Actions to deploy scheduler app"
+    echo "✅ Service Account created"
+    
+    # Wait a moment for the service account to be fully created
+    echo "⏳ Waiting for service account to be ready..."
+    sleep 10
+else
+    echo "✅ Service Account already exists"
+fi
 
 # Grant necessary roles to the service account
 echo "🔐 Granting necessary roles..."
@@ -73,13 +93,13 @@ echo "🔗 Creating Workload Identity binding..."
 gcloud iam service-accounts add-iam-policy-binding "github-actions-scheduler@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
     --project="$GCP_PROJECT_ID" \
     --role="roles/iam.workloadIdentityUser" \
-    --member="principalSet://iam.googleapis.com/projects/$GCP_PROJECT_ID/locations/global/workloadIdentityPools/github-actions/attribute.repository/$GITHUB_REPO"
+    --member="principalSet://iam.googleapis.com/projects/$GCP_PROJECT_ID/locations/global/workloadIdentityPools/scheduler-app-github-actions/attribute.repository/$GITHUB_REPO"
 
 # Get the Workload Identity Provider resource name
 WORKLOAD_IDENTITY_PROVIDER=$(gcloud iam workload-identity-pools providers describe "github-actions" \
     --project="$GCP_PROJECT_ID" \
     --location="global" \
-    --workload-identity-pool="github-actions" \
+    --workload-identity-pool="scheduler-app-github-actions" \
     --format="value(name)")
 
 echo ""
