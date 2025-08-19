@@ -76,6 +76,7 @@ jobs:
       with:
         workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
         service_account: github-actions-scheduler@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+        create_credentials_file: true
         
     - name: Configure Docker for GCR
       run: |
@@ -144,6 +145,7 @@ jobs:
       with:
         workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
         service_account: github-actions-scheduler@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+        create_credentials_file: true
         
     - name: Get GKE credentials
       run: |
