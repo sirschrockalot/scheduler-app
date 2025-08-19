@@ -126,15 +126,17 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}
           type=sha,prefix={{branch}}-
           
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+    - name: Build Docker image
+      run: |
+        echo "🔨 Building Docker image..."
+        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+        echo "✅ Docker image built successfully"
+        
+    - name: Push Docker image to GCR
+      run: |
+        echo "📤 Pushing Docker image to GCR..."
+        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        echo "✅ Docker image pushed successfully"
 
   deploy:
     name: Deploy to GKE
