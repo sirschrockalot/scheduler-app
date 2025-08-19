@@ -1,0 +1,61 @@
+name: Manual Deploy Instructions
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+jobs:
+  provide-instructions:
+    name: Provide Deployment Instructions
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Show deployment instructions
+      run: |
+        echo "🚀 Manual Deployment Instructions for ${{ inputs.environment }}"
+        echo "=================================================="
+        echo ""
+        echo "Since GCP authentication requires service account keys (which are disabled),"
+        echo "you'll need to deploy manually using the following steps:"
+        echo ""
+        echo "1. Build and push the Docker image locally:"
+        echo "   docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/job-scheduler:latest ."
+        echo "   docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/job-scheduler:latest"
+        echo ""
+        echo "2. Update the Kubernetes manifests:"
+        echo "   sed -i 's|gcr.io/YOUR_PROJECT_ID/job-scheduler:latest|gcr.io/${{ secrets.GCP_PROJECT_ID }}/job-scheduler:latest|g' k8s/deployment.yaml"
+        echo ""
+        echo "3. Deploy to GKE:"
+        echo "   kubectl apply -f k8s/"
+        echo ""
+        echo "4. Verify deployment:"
+        echo "   kubectl get pods -n scheduler-app"
+        echo "   kubectl logs -f -n scheduler-app deployment/job-scheduler"
+        echo ""
+        echo "📚 For more details, see:"
+        echo "- GKE-DEPLOYMENT.md"
+        echo "- DEPLOYMENT-CHECKLIST.md"
+        echo ""
+        echo "🔧 Alternative: Use the local deployment script:"
+        echo "   ./deploy-to-gke.sh deploy"
+        
+    - name: Create deployment summary
+      run: |
+        echo "## 📋 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Status**: Manual deployment required" >> $GITHUB_STEP_SUMMARY
+        echo "**Reason**: GCP service account key creation is disabled" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Next Steps**: Follow the manual deployment instructions above" >> $GITHUB_STEP_SUMMARY
