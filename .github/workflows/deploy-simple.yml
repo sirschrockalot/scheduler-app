@@ -1,0 +1,70 @@
+name: Deploy to GKE (Simple)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME }}
+  GKE_ZONE: ${{ secrets.GKE_ZONE }}
+  REGISTRY: gcr.io
+  IMAGE_NAME: job-scheduler
+
+jobs:
+  deploy:
+    name: Deploy to GKE
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Docker image
+      run: |
+        docker build -t $IMAGE_NAME .
+        echo "✅ Docker image built successfully"
+        
+    - name: Show deployment instructions
+      run: |
+        echo "🚀 Deployment Instructions for ${{ inputs.environment }}"
+        echo "=================================================="
+        echo ""
+        echo "Since GCP authentication requires manual setup, please:"
+        echo ""
+        echo "1. Build and push the Docker image locally:"
+        echo "   docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/job-scheduler:latest ."
+        echo "   docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/job-scheduler:latest"
+        echo ""
+        echo "2. Update the Kubernetes manifests:"
+        echo "   sed -i 's|gcr.io/YOUR_PROJECT_ID/job-scheduler:latest|gcr.io/${{ secrets.GCP_PROJECT_ID }}/job-scheduler:latest|g' k8s/deployment.yaml"
+        echo ""
+        echo "3. Deploy to GKE using your local script:"
+        echo "   ./deploy-to-gke.sh deploy"
+        echo ""
+        echo "4. Or deploy manually:"
+        echo "   kubectl apply -f k8s/"
+        echo ""
+        echo "🔧 Quick deploy command:"
+        echo "   ./deploy-to-gke.sh deploy"
+        
+    - name: Create deployment summary
+      run: |
+        echo "## 📋 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Status**: Manual deployment required" >> $GITHUB_STEP_SUMMARY
+        echo "**Docker Image**: Built successfully" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Next Steps**: Use local deployment script or follow manual instructions above" >> $GITHUB_STEP_SUMMARY
