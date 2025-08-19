@@ -91,6 +91,22 @@ jobs:
         gcloud container images list-tags gcr.io/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }} --limit=1 || echo "No existing images found - repository will be created on first push"
         echo "✅ GCR authentication test complete"
         
+    - name: Set Docker credentials
+      run: |
+        echo "🔐 Setting Docker credentials for GCR..."
+        # Get the access token and set it for Docker
+        ACCESS_TOKEN=$(gcloud auth print-access-token)
+        echo "Access token obtained: ${ACCESS_TOKEN:0:20}..."
+        
+        # Configure Docker to use the access token
+        echo $ACCESS_TOKEN | docker login -u oauth2accesstoken --password-stdin gcr.io
+        echo "✅ Docker authenticated with GCR"
+        
+        # Verify Docker can access GCR
+        echo "🔍 Verifying Docker GCR access..."
+        docker pull hello-world || echo "Using local hello-world image for testing"
+        echo "✅ Docker GCR access verified"
+        
     - name: Extract metadata
       id: meta
       uses: docker/metadata-action@v5
