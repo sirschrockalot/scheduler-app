@@ -93,6 +93,17 @@ jobs:
         gcloud artifacts docker images list us-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }} --limit=1 || echo "No existing images found - repository will be created on first push"
         echo "✅ Artifact Registry authentication test complete"
         
+    - name: Create Artifact Registry repository
+      run: |
+        echo "🏗️ Creating Artifact Registry repository if it doesn't exist..."
+        gcloud artifacts repositories create ${{ env.IMAGE_NAME }} \
+          --repository-format=docker \
+          --location=us \
+          --project=${{ env.PROJECT_ID }} \
+          --description="Docker repository for job-scheduler" \
+          --quiet || echo "Repository already exists or creation failed"
+        echo "✅ Artifact Registry repository ready"
+        
     - name: Get GCR access token
       id: gcr-token
       run: |
