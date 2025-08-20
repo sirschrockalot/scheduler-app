@@ -100,14 +100,29 @@ jobs:
         echo "Repository name: ${{ env.IMAGE_NAME }}"
         echo "Location: us"
         
-        # Try to create the repository
-        gcloud artifacts repositories create ${{ env.IMAGE_NAME }} \
-          --repository-format=docker \
-          --location=us \
-          --project=${{ env.PROJECT_ID }} \
-          --description="Docker repository for job-scheduler" \
-          --quiet || echo "Repository creation failed or already exists"
+        # Check if repository already exists
+        echo "🔍 Checking if repository already exists..."
+        EXISTING_REPO=$(gcloud artifacts repositories list --location=us --project=${{ env.PROJECT_ID }} --filter="name:${{ env.IMAGE_NAME }}" --format="value(name)" --limit=1)
+        
+        if [ -z "$EXISTING_REPO" ]; then
+          echo "📦 Repository does not exist, creating it..."
+          # Create the repository
+          gcloud artifacts repositories create ${{ env.IMAGE_NAME }} \
+            --repository-format=docker \
+            --location=us \
+            --project=${{ env.PROJECT_ID }} \
+            --description="Docker repository for job-scheduler"
           
+          if [ $? -eq 0 ]; then
+            echo "✅ Repository created successfully"
+          else
+            echo "❌ Repository creation failed"
+            exit 1
+          fi
+        else
+          echo "✅ Repository already exists: $EXISTING_REPO"
+        fi
+        
         # Verify the repository exists
         echo "🔍 Verifying repository exists..."
         gcloud artifacts repositories list --location=us --project=${{ env.PROJECT_ID }} --filter="name:${{ env.IMAGE_NAME }}"
