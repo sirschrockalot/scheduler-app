@@ -23,7 +23,7 @@ data:
         headers:
           Authorization: "Bearer ${JWT_TOKEN}"
           X-Custom-Header: "kpi-app"
-          Content-Type: "application/json"
+          Content-Type: application/json
         timeout: 15000
         retries: 2
         enabled: true
@@ -37,7 +37,7 @@ data:
         headers:
           Authorization: "Bearer ${JWT_TOKEN}"
           X-Custom-Header: "kpi-app"
-          Content-Type: "application/json"
+          Content-Type: application/json
         timeout: 15000
         retries: 2
         enabled: true
@@ -61,7 +61,7 @@ data:
         headers:
           Authorization: "Bearer ${JWT_TOKEN}"
           X-Custom-Header: "test-job"
-          Content-Type: "application/json"
+          Content-Type: application/json
         data:
           test_mode: true
           timestamp: "${NOW}"
