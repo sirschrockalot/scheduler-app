@@ -26,7 +26,8 @@ env:
   GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME }}
   GKE_ZONE: ${{ secrets.GKE_ZONE }}
   REGISTRY: us-docker.pkg.dev
-  IMAGE_NAME: job-scheduler
+  REPOSITORY: job-scheduler
+  IMAGE_NAME: scheduler
 
 jobs:
   test:
@@ -150,22 +151,12 @@ jobs:
         docker pull hello-world || echo "Using local hello-world image"
         echo "✅ Docker authentication verified"
         
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=sha,prefix={{branch}}-
+
           
     - name: Build Docker image
       run: |
         echo "🔨 Building Docker image..."
-        IMAGE_TAG="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        IMAGE_TAG="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
         echo "Building image: $IMAGE_TAG"
         docker build -t "$IMAGE_TAG" .
         echo "✅ Docker image built successfully"
@@ -173,7 +164,7 @@ jobs:
     - name: Push Docker image to Artifact Registry
       run: |
         echo "📤 Pushing Docker image to Artifact Registry..."
-        IMAGE_TAG="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        IMAGE_TAG="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
         echo "Pushing image: $IMAGE_TAG"
         docker push "$IMAGE_TAG"
         echo "✅ Docker image pushed successfully"
@@ -206,8 +197,8 @@ jobs:
     - name: Update Kubernetes manifests
       run: |
         # Update deployment.yaml with correct image
-        sed -i "s|gcr.io/YOUR_PROJECT_ID/job-scheduler:latest|${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g" k8s/deployment.yaml
-        echo "✅ Updated deployment.yaml with image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        sed -i "s|gcr.io/YOUR_PROJECT_ID/job-scheduler:latest|${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}|g" k8s/deployment.yaml
+        echo "✅ Updated deployment.yaml with image: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
         
     - name: Deploy to Kubernetes
       run: |
@@ -237,6 +228,6 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Environment**: ${{ inputs.environment || 'staging' }}" >> $GITHUB_STEP_SUMMARY
         echo "**Status**: ✅ Successfully deployed" >> $GITHUB_STEP_SUMMARY
-        echo "**Image**: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Image**: ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Next Steps**: Monitor the deployment and verify connectivity" >> $GITHUB_STEP_SUMMARY
