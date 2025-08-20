@@ -88,6 +88,10 @@ gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
     --member="serviceAccount:github-actions-scheduler@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
     --role="roles/iam.serviceAccountUser"
 
+gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+    --member="serviceAccount:github-actions-scheduler@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/artifactregistry.admin"
+
 # Allow GitHub Actions to impersonate the service account
 echo "🔗 Creating Workload Identity binding..."
 gcloud iam service-accounts add-iam-policy-binding "github-actions-scheduler@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
