@@ -96,12 +96,22 @@ jobs:
     - name: Create Artifact Registry repository
       run: |
         echo "🏗️ Creating Artifact Registry repository if it doesn't exist..."
+        echo "Project ID: ${{ env.PROJECT_ID }}"
+        echo "Repository name: ${{ env.IMAGE_NAME }}"
+        echo "Location: us"
+        
+        # Try to create the repository
         gcloud artifacts repositories create ${{ env.IMAGE_NAME }} \
           --repository-format=docker \
           --location=us \
           --project=${{ env.PROJECT_ID }} \
           --description="Docker repository for job-scheduler" \
-          --quiet || echo "Repository already exists or creation failed"
+          --quiet || echo "Repository creation failed or already exists"
+          
+        # Verify the repository exists
+        echo "🔍 Verifying repository exists..."
+        gcloud artifacts repositories list --location=us --project=${{ env.PROJECT_ID }} --filter="name:${{ env.IMAGE_NAME }}"
+        
         echo "✅ Artifact Registry repository ready"
         
     - name: Get GCR access token
@@ -140,13 +150,17 @@ jobs:
     - name: Build Docker image
       run: |
         echo "🔨 Building Docker image..."
-        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+        IMAGE_TAG="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        echo "Building image: $IMAGE_TAG"
+        docker build -t "$IMAGE_TAG" .
         echo "✅ Docker image built successfully"
         
     - name: Push Docker image to Artifact Registry
       run: |
         echo "📤 Pushing Docker image to Artifact Registry..."
-        docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        IMAGE_TAG="${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        echo "Pushing image: $IMAGE_TAG"
+        docker push "$IMAGE_TAG"
         echo "✅ Docker image pushed successfully"
 
   deploy:
