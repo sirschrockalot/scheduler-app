@@ -1,0 +1,76 @@
+# Local Job Scheduler Configuration
+# This file defines jobs for local Docker development
+
+global:
+  defaultTimeout: 10000
+  defaultRetries: 3
+  defaultHeaders:
+    Content-Type: application/json
+
+jobs:
+  # KPI Afternoon Report - Local testing version (runs every 2 minutes)
+  - name: kpi-afternoon-report-local
+    schedule: "0 */2 * * * *"  # Every 2 minutes for local testing
+    url: "http://slack-kpi-service-aircall-slack-agent-1:6000/report/afternoon"
+    method: POST
+    headers:
+      Authorization: "Bearer ${JWT_TOKEN}"
+      X-Custom-Header: "kpi-app-local"
+      Content-Type: application/json
+    timeout: 15000
+    retries: 2
+    enabled: true
+    description: "Local KPI afternoon report generation (every 2 minutes)"
+
+  # KPI Evening Report - Local testing version (runs every 3 minutes)
+  - name: kpi-evening-report-local
+    schedule: "0 */3 * * * *"  # Every 3 minutes for local testing
+    url: "http://slack-kpi-service-aircall-slack-agent-1:6000/report/night"
+    method: POST
+    headers:
+      Authorization: "Bearer ${JWT_TOKEN}"
+      X-Custom-Header: "kpi-app-local"
+      Content-Type: application/json
+    timeout: 15000
+    retries: 2
+    enabled: true
+    description: "Local KPI evening report generation (every 3 minutes)"
+
+  # Health check job for Slack-KPI-Service - Local version
+  - name: kpi-service-health-check-local
+    schedule: "0 */1 * * * *"  # Every minute for local testing
+    url: "http://slack-kpi-service-aircall-slack-agent-1:6000/health"
+    method: GET
+    timeout: 5000
+    retries: 2
+    enabled: true
+    description: "Local health check for Slack-KPI-Service (every minute)"
+
+  # Test job that runs every 30 seconds (for debugging)
+  - name: test-kpi-endpoint-local
+    schedule: "*/30 * * * * *"  # Every 30 seconds for local testing
+    url: "http://slack-kpi-service-aircall-slack-agent-1:6000/report/afternoon"
+    method: POST
+    headers:
+      Authorization: "Bearer ${JWT_TOKEN}"
+      X-Custom-Header: "test-job-local"
+      Content-Type: application/json
+    data:
+      test_mode: true
+      timestamp: "${NOW}"
+      action: "test_kpi_endpoint_local"
+      environment: "local"
+    timeout: 5000
+    retries: 1
+    enabled: true
+    description: "Local test job to verify KPI service connectivity (every 30 seconds)"
+
+  # Test API server health check (if running locally)
+  - name: test-api-health-check
+    schedule: "0 */2 * * * *"  # Every 2 minutes
+    url: "http://test-api-server:8080/health"
+    method: GET
+    timeout: 5000
+    retries: 2
+    enabled: false  # Disabled by default, enable if test-api is running
+    description: "Health check for local test API server"
