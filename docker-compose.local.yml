@@ -62,3 +62,6 @@ networks:
   app-network:
     external: true
     name: slack-kpi-service_app-network
+    # Alternative network names if the above doesn't work:
+    # name: slack-kpi-service_default
+    # name: slack-kpi-service-network

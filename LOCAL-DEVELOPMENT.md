@@ -70,7 +70,9 @@ The local configuration includes:
 - **Health Check**: Runs every minute
 - **Test Job**: Runs every 30 seconds
 
-All jobs are configured for local testing with shorter intervals.
+All jobs are configured for local testing with shorter intervals and use the correct local Docker network URLs:
+- `http://slack-kpi-service:6000` for Slack-KPI-Service endpoints
+- `http://test-api-server:8080` for local test API
 
 ## 🌐 Available Endpoints
 
@@ -170,12 +172,15 @@ curl -X POST http://localhost:8081/jobs/kpi-afternoon-report-local/trigger
 
 3. **Network Connectivity Issues**
    ```bash
+   # Check available networks and connectivity
+   ./check-networks.sh
+   
    # Check if containers can reach each other
-   docker exec job-scheduler-local ping slack-kpi-service-aircall-slack-agent-1
+   docker exec job-scheduler-local ping slack-kpi-service
    
    # Check network configuration
    docker network ls
-   docker network inspect job-scheduler-local-network
+   docker network inspect slack-kpi-service_app-network
    ```
 
 4. **Job Not Running**
