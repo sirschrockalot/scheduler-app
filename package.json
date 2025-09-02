@@ -7,6 +7,7 @@
     "dev": "ts-node-dev src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "postinstall": "npm run build",
     "test": "jest",
     "lint": "echo 'Linting skipped for now - will be configured later'",
     "lint:fix": "echo 'Linting skipped for now - will be configured later'"

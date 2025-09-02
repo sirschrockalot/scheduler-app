@@ -8,10 +8,10 @@ global:
     Content-Type: application/json
 
 jobs:
-  # KPI Afternoon Report - Local testing version (runs every 2 minutes)
+  # KPI Afternoon Report - Weekdays at 1:01 PM
   - name: kpi-afternoon-report-local
-    schedule: "0 */2 * * * *"  # Every 2 minutes for local testing
-    url: "http://slack-kpi-service:6000/report/afternoon"
+    schedule: "0 1 13 * * 1-5"  # Weekdays at 1:01 PM (Monday-Friday)
+    url: "http://slack-kpi-service-aircall-slack-agent-1:6000/report/afternoon"
     method: POST
     headers:
       Authorization: "Bearer ${JWT_TOKEN}"
@@ -20,12 +20,12 @@ jobs:
     timeout: 15000
     retries: 2
     enabled: true
-    description: "Local KPI afternoon report generation (every 2 minutes)"
+    description: "KPI afternoon report generation - Weekdays at 1:01 PM - calling actual KPI service"
 
-  # KPI Evening Report - Local testing version (runs every 3 minutes)
+  # KPI Evening Report - Weekdays at 7:00 PM
   - name: kpi-evening-report-local
-    schedule: "0 */3 * * * *"  # Every 3 minutes for local testing
-    url: "http://slack-kpi-service:6000/report/night"
+    schedule: "0 0 19 * * 1-5"  # Weekdays at 7:00 PM (Monday-Friday)
+    url: "http://slack-kpi-service-aircall-slack-agent-1:6000/report/night"
     method: POST
     headers:
       Authorization: "Bearer ${JWT_TOKEN}"
@@ -34,22 +34,22 @@ jobs:
     timeout: 15000
     retries: 2
     enabled: true
-    description: "Local KPI evening report generation (every 3 minutes)"
+    description: "KPI evening report generation - Weekdays at 7:00 PM - calling actual KPI service"
 
   # Health check job for Slack-KPI-Service - Local version
   - name: kpi-service-health-check-local
     schedule: "0 */1 * * * *"  # Every minute for local testing
-    url: "http://slack-kpi-service:6000/health"
+    url: "http://test-api-server-local:8080/health"
     method: GET
     timeout: 5000
     retries: 2
-    enabled: true
-    description: "Local health check for Slack-KPI-Service (every minute)"
+    enabled: false
+    description: "Local health check for test API server (every minute)"
 
   # Test job that runs every 30 seconds (for debugging)
   - name: test-kpi-endpoint-local
     schedule: "*/30 * * * * *"  # Every 30 seconds for local testing
-    url: "http://slack-kpi-service:6000/report/afternoon"
+    url: "http://slack-kpi-service-aircall-slack-agent-1:8080/report/afternoon"
     method: POST
     headers:
       Authorization: "Bearer ${JWT_TOKEN}"
@@ -62,15 +62,15 @@ jobs:
       environment: "local"
     timeout: 5000
     retries: 1
-    enabled: true
-    description: "Local test job to verify KPI service connectivity (every 30 seconds)"
+    enabled: false
+    description: "Local test job to verify test API connectivity (every 30 seconds)"
 
   # Test API server health check (if running locally)
   - name: test-api-health-check
     schedule: "0 */2 * * * *"  # Every 2 minutes
-    url: "http://test-api-server:8080/health"
+    url: "http://slack-kpi-service-aircall-slack-agent-1:8080/health"
     method: GET
     timeout: 5000
     retries: 2
-    enabled: false  # Disabled by default, enable if test-api is running
+    enabled: false  # Enabled since we're using test-api for local testing
     description: "Health check for local test API server"

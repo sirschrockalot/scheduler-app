@@ -17,13 +17,13 @@ data:
     jobs:
       # KPI Afternoon Report - Weekdays at 1:01 PM
       - name: kpi-afternoon-report
-        schedule: "0 1 13 * * 1-5"  # Weekdays at 1:01 PM (CST)
+        schedule: "0 1 * * 1-5"  # Weekdays at 1:01 PM (CST)
         url: "http://slack-kpi-service.slack-kpi-service.svc.cluster.local:6000/report/afternoon"
         method: POST
         headers:
           Authorization: "Bearer ${JWT_TOKEN}"
           X-Custom-Header: "kpi-app"
-          Content-Type: application/json
+          Content-Type: "application/json"
         timeout: 15000
         retries: 2
         enabled: true
@@ -37,7 +37,7 @@ data:
         headers:
           Authorization: "Bearer ${JWT_TOKEN}"
           X-Custom-Header: "kpi-app"
-          Content-Type: application/json
+          Content-Type: "application/json"
         timeout: 15000
         retries: 2
         enabled: true
@@ -61,7 +61,7 @@ data:
         headers:
           Authorization: "Bearer ${JWT_TOKEN}"
           X-Custom-Header: "test-job"
-          Content-Type: application/json
+          Content-Type: "application/json"
         data:
           test_mode: true
           timestamp: "${NOW}"
