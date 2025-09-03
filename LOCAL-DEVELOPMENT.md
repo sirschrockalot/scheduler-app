@@ -1,50 +1,63 @@
 # Local Development Guide
 
-This guide will help you set up and run the Job Scheduler application locally using Docker.
+This guide will help you set up and run the Job Scheduler application locally for development.
 
 ## 🚀 Quick Start
 
 ### 1. Prerequisites
 
-- Docker and Docker Compose installed
-- Access to the Slack-KPI-Service (running in Docker or accessible via network)
+- Node.js 18 or higher
+- npm or yarn
+- Access to the Slack-KPI-Service (running on Heroku or locally)
 - Valid API tokens (JWT, Aircall, Slack)
 
 ### 2. Setup Environment
 
 ```bash
-# Copy the local environment template
-cp env.local.example .env.local
+# Copy the environment template
+cp env.example .env
 
-# Edit .env.local with your actual values
-nano .env.local
+# Edit .env with your actual values
+nano .env
 ```
 
-### 3. Run the Application
+### 3. Install Dependencies
 
 ```bash
-# Use the automated script (recommended)
-./run-local.sh
+npm install
+```
 
-# Or manually with Docker Compose
-docker-compose -f docker-compose.local.yml up -d
+### 4. Run the Application
+
+```bash
+# Development mode with hot reload
+npm run dev
+
+# Or build and run
+npm run build
+npm start
 ```
 
 ## 📁 File Structure
 
 ```
 scheduler-app/
-├── jobs-local.yaml          # Local job configuration
-├── docker-compose.local.yml # Local Docker Compose setup
-├── .env.local              # Local environment variables (create this)
-├── env.local.example       # Environment template
-├── run-local.sh            # Automated setup script
-└── LOCAL-DEVELOPMENT.md    # This file
+├── src/
+│   ├── scheduler.ts       # Main scheduler engine
+│   ├── yaml-manager.ts    # YAML configuration manager
+│   ├── types.ts           # TypeScript type definitions
+│   └── index.ts           # Application entry point
+├── jobs.yaml             # Job configuration
+├── jobs-local.yaml       # Local job configuration (optional)
+├── .env                  # Environment variables (create this)
+├── env.example           # Environment template
+├── env.production        # Production environment template
+└── LOCAL-DEVELOPMENT.md  # This file
 ```
 
 ## ⚙️ Configuration
 
-### Environment Variables (.env.local)
+### Environment Variables (.env)
 
 Required variables:
 ```bash
@@ -57,94 +70,97 @@ Optional variables:
 ```bash
 LOG_LEVEL=debug
 NODE_ENV=development
-TZ=America/Chicago
 PORT=8081
 ```
 
-### Job Configuration (jobs-local.yaml)
+### Job Configuration (jobs.yaml)
 
-The local configuration includes:
+The main configuration includes:
 
-- **KPI Afternoon Report**: Runs every 2 minutes
-- **KPI Evening Report**: Runs every 3 minutes  
-- **Health Check**: Runs every minute
-- **Test Job**: Runs every 30 seconds
+- **KPI Afternoon Report**: Weekdays at 1:01 PM CST
+- **KPI Evening Report**: Weekdays at 6:30 PM CST
 
-All jobs are configured for local testing with shorter intervals and use the correct local Docker network URLs:
-- `http://slack-kpi-service:6000` for Slack-KPI-Service endpoints
-- `http://test-api-server:8080` for local test API
+For local testing, you can create a `jobs-local.yaml` with shorter intervals:
+
+```yaml
+jobs:
+  - name: kpi-afternoon-report-local
+    schedule: "0 */2 * * * *"  # Every 2 minutes
+    url: "https://slack-kpi-service-dbf2f7d60f2e.herokuapp.com/report/afternoon"
+    method: POST
+    headers:
+      Authorization: "Bearer ${JWT_TOKEN}"
+      Content-Type: "application/json"
+    timeout: 15000
+    retries: 2
+    enabled: true
+```
 
 ## 🌐 Available Endpoints
 
 When running locally:
 
-- **Job Scheduler**: http://localhost:8081
 - **Health Check**: http://localhost:8081/health
 - **Status**: http://localhost:8081/status
-- **Test API**: http://localhost:8080
 
 ## 🔧 Useful Commands
 
-### Start Services
+### Development Commands
 ```bash
-# Automated setup
-./run-local.sh
+# Start with hot reload
+npm run dev
 
-# Manual start
-docker-compose -f docker-compose.local.yml up -d
+# Build TypeScript
+npm run build
+
+# Run tests
+npm test
+
+# Lint code
+npm run lint
 ```
 
-### View Logs
+### Testing Commands
 ```bash
-# All services
-docker-compose -f docker-compose.local.yml logs -f
+# Test health endpoint
+curl http://localhost:8081/health
 
-# Specific service
-docker-compose -f docker-compose.local.yml logs -f job-scheduler-local
-```
+# Test status endpoint
+curl http://localhost:8081/status
 
-### Stop Services
-```bash
-docker-compose -f docker-compose.local.yml down
-```
-
-### Restart Services
-```bash
-docker-compose -f docker-compose.local.yml restart
-```
-
-### Rebuild and Start
-```bash
-docker-compose -f docker-compose.local.yml down
-docker-compose -f docker-compose.local.yml build --no-cache
-docker-compose -f docker-compose.local.yml up -d
+# Test job execution manually
+curl -X POST https://slack-kpi-service-dbf2f7d60f2e.herokuapp.com/report/afternoon \
+  -H "Authorization: Bearer your_jwt_token" \
+  -H "Content-Type: application/json"
 ```
 
 ## 🔍 Monitoring and Debugging
 
-### Check Service Status
+### Check Application Status
 ```bash
-# Check if containers are running
-docker-compose -f docker-compose.local.yml ps
-
-# Check health endpoints
+# Check if application is running
 curl http://localhost:8081/health
-curl http://localhost:8080/health
+
+# Check scheduler status
+curl http://localhost:8081/status
 ```
 
-### View Job Execution
+### View Logs
 ```bash
-# Watch job scheduler logs
-docker-compose -f docker-compose.local.yml logs -f job-scheduler-local
+# Application logs (console output)
+# Logs are displayed in the terminal when running npm run dev
 
-# Check specific job execution
-docker exec job-scheduler-local tail -f /app/logs/scheduler.log
+# File logs (if running with npm start)
+tail -f logs/combined.log
+tail -f logs/error.log
 ```
 
-### Test Job Execution
+### Debug Mode
+
+Enable debug logging by setting in `.env`:
 ```bash
-# Manually trigger a job (if supported)
-curl -X POST http://localhost:8081/jobs/kpi-afternoon-report-local/trigger
+LOG_LEVEL=debug
+NODE_ENV=development
 ```
 
 ## 🐛 Troubleshooting
@@ -155,73 +171,71 @@ curl -X POST http://localhost:8081/jobs/kpi-afternoon-report-local/trigger
    ```bash
    # Check what's using the port
    lsof -i :8081
-   lsof -i :8080
    
-   # Stop conflicting services
-   docker-compose -f docker-compose.local.yml down
+   # Kill the process or change PORT in .env
    ```
 
 2. **Environment Variables Not Loaded**
    ```bash
-   # Check if .env.local exists and has correct format
-   cat .env.local
+   # Check if .env exists and has correct format
+   cat .env
    
-   # Ensure no spaces around = in .env.local
+   # Ensure no spaces around = in .env
    JWT_TOKEN=your_token_here
    ```
 
-3. **Network Connectivity Issues**
+3. **JWT Token Issues**
    ```bash
-   # Check available networks and connectivity
-   ./check-networks.sh
-   
-   # Check if containers can reach each other
-   docker exec job-scheduler-local ping slack-kpi-service
-   
-   # Check network configuration
-   docker network ls
-   docker network inspect slack-kpi-service_app-network
+   # Generate a new JWT token if needed
+   npm install jsonwebtoken
+   node -e "
+   const jwt = require('jsonwebtoken');
+   const secret = 'your_jwt_secret';
+   const payload = { sub: 'scheduler-app', iat: Math.floor(Date.now() / 1000) };
+   const token = jwt.sign(payload, secret);
+   console.log('JWT Token:', token);
+   "
    ```
 
 4. **Job Not Running**
    ```bash
    # Check job configuration
-   docker exec job-scheduler-local cat /app/jobs.yaml
+   cat jobs.yaml
    
-   # Check scheduler logs
-   docker-compose -f docker-compose.local.yml logs job-scheduler-local
+   # Check scheduler logs in console
+   # Look for job registration messages
    ```
 
 ### Debug Mode
 
-Enable debug logging by setting in `.env.local`:
+Enable debug logging by setting in `.env`:
 ```bash
 LOG_LEVEL=debug
-ENABLE_DEBUG_LOGGING=true
+NODE_ENV=development
 ```
 
 ## 🔄 Development Workflow
 
 1. **Make Changes**: Edit source code or configuration
-2. **Rebuild**: `docker-compose -f docker-compose.local.yml build`
-3. **Restart**: `docker-compose -f docker-compose.local.yml restart`
+2. **Test Locally**: `npm run dev` (auto-reloads on changes)
+3. **Build**: `npm run build`
 4. **Test**: Check logs and endpoints
-5. **Iterate**: Repeat as needed
+5. **Deploy**: `git push heroku master` (when ready)
 
 ## 📝 Notes
 
-- The local setup uses the same Docker image as production
-- Jobs run more frequently for testing (30 seconds to 3 minutes)
-- All logs are persisted to the `./logs` directory
-- The test API server is included for isolated testing
-- Network connectivity to Slack-KPI-Service is maintained via external network
+- The local setup uses the same codebase as production
+- Jobs can be configured with shorter intervals for testing
+- All logs are displayed in the console during development
+- The application connects to the Heroku-deployed Slack-KPI-Service
+- Environment variables are loaded from `.env` file
 
 ## 🆘 Getting Help
 
 If you encounter issues:
 
-1. Check the logs: `docker-compose -f docker-compose.local.yml logs`
-2. Verify environment variables: `cat .env.local`
-3. Check network connectivity: `docker network ls`
+1. Check the console logs when running `npm run dev`
+2. Verify environment variables: `cat .env`
+3. Test endpoints: `curl http://localhost:8081/health`
 4. Review this documentation
 5. Check the main README.md for additional information
