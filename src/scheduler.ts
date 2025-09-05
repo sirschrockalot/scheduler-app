@@ -69,13 +69,13 @@ export class JobScheduler {
       await this.executeJob(config);
     }, {
       scheduled: false,
-      timezone: process.env.TZ || (process.env.NODE_ENV === 'production' ? 'America/Chicago' : 'America/Chicago')
+      timezone: process.env.TZ || (process.env['NODE_ENV'] === 'production' ? 'America/Chicago' : 'America/Chicago')
     });
 
     this.jobs.set(config.name, task);
     this.logger.info(`Job '${config.name}' registered with cron expression: ${config.cronExpression}`, {
-      timezone: process.env.TZ || (process.env.NODE_ENV === 'production' ? 'America/Chicago' : 'America/Chicago'),
-      nodeEnv: process.env.NODE_ENV
+      timezone: process.env.TZ || (process.env['NODE_ENV'] === 'production' ? 'America/Chicago' : 'America/Chicago'),
+      nodeEnv: process.env['NODE_ENV']
     });
   }
 
