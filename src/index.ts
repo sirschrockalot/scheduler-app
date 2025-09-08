@@ -28,8 +28,39 @@ const server = createServer((req, res) => {
     }));
   } else if (req.url === '/status' && req.method === 'GET') {
     const status = scheduler.getStatus();
+    const currentTime = new Date();
+    const timezone = process.env.TZ || 'America/Chicago';
+    
+    const detailedStatus = {
+      ...status,
+      currentTime: currentTime.toISOString(),
+      currentTimeLocal: currentTime.toLocaleString('en-US', { timeZone: timezone }),
+      timezone: timezone,
+      nodeEnv: process.env['NODE_ENV'],
+      uptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+      environment: {
+        TZ: process.env.TZ,
+        NODE_ENV: process.env['NODE_ENV'],
+        JWT_TOKEN_SET: !!process.env['JWT_TOKEN']
+      }
+    };
+    
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(status));
+    res.end(JSON.stringify(detailedStatus, null, 2));
+  } else if (req.url === '/jobs' && req.method === 'GET') {
+    const jobNames = scheduler.getJobNames();
+    const jobDetails = jobNames.map(name => ({
+      name: name,
+      isRunning: scheduler.isJobRunning(name)
+    }));
+    
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      jobs: jobDetails,
+      totalJobs: jobNames.length,
+      currentTime: new Date().toISOString()
+    }, null, 2));
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found' }));

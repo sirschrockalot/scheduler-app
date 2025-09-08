@@ -58,25 +58,52 @@ export class JobScheduler {
    */
   public registerJob(config: JobConfig): void {
     if (this.jobs.has(config.name)) {
-      throw new Error(`Job with name '${config.name}' already exists`);
+      this.logger.warn(`Job with name '${config.name}' already exists, removing old job`);
+      this.removeJob(config.name);
     }
 
     if (!cron.validate(config.cronExpression)) {
       throw new Error(`Invalid cron expression: ${config.cronExpression}`);
     }
 
+    // Get timezone - prioritize TZ env var, then default to America/Chicago
+    const timezone = process.env.TZ || 'America/Chicago';
+    
     const task = cron.schedule(config.cronExpression, async () => {
       await this.executeJob(config);
     }, {
-      scheduled: false,
-      timezone: process.env.TZ || (process.env['NODE_ENV'] === 'production' ? 'America/Chicago' : 'America/Chicago')
+      scheduled: true, // CRITICAL FIX: Set to true so job starts immediately
+      timezone: timezone
     });
 
     this.jobs.set(config.name, task);
-    this.logger.info(`Job '${config.name}' registered with cron expression: ${config.cronExpression}`, {
-      timezone: process.env.TZ || (process.env['NODE_ENV'] === 'production' ? 'America/Chicago' : 'America/Chicago'),
-      nodeEnv: process.env['NODE_ENV']
+    this.logger.info(`✅ Job '${config.name}' registered and STARTED with cron expression: ${config.cronExpression}`, {
+      timezone: timezone,
+      nodeEnv: process.env['NODE_ENV'],
+      scheduled: true,
+      nextRun: this.getNextRunTime(config.cronExpression, timezone)
     });
+  }
+
+  /**
+   * Get the next run time for a cron expression
+   */
+  private getNextRunTime(cronExpression: string, timezone: string): string {
+    try {
+      // Create a temporary task to get next run time
+      const tempTask = cron.schedule(cronExpression, () => {}, {
+        scheduled: false,
+        timezone: timezone
+      });
+      
+      // Get the next scheduled time
+      const nextRun = (tempTask as any).nextDate();
+      tempTask.stop();
+      
+      return nextRun ? nextRun.toISOString() : 'Unknown';
+    } catch (error) {
+      return 'Error calculating next run time';
+    }
   }
 
   /**
@@ -182,10 +209,18 @@ export class JobScheduler {
   public start(): void {
     this.logger.info('🎯 Starting job scheduler');
     
+    let startedCount = 0;
     for (const [jobName, task] of this.jobs) {
-      task.start();
-      this.logger.info(`▶️ Started job: ${jobName}`);
+      try {
+        task.start();
+        startedCount++;
+        this.logger.info(`▶️ Started job: ${jobName}`);
+      } catch (error) {
+        this.logger.error(`❌ Failed to start job: ${jobName}`, { error: error instanceof Error ? error.message : String(error) });
+      }
     }
+    
+    this.logger.info(`🎯 Job scheduler started: ${startedCount}/${this.jobs.size} jobs running`);
   }
 
   /**
@@ -247,6 +282,8 @@ export class JobScheduler {
    * Update jobs from YAML configuration
    */
   public updateJobsFromYaml(jobs: JobConfig[]): void {
+    this.logger.info(`🔄 Updating scheduler with ${jobs.length} jobs from YAML configuration`);
+    
     // Stop all existing jobs
     this.stop();
     
@@ -254,18 +291,32 @@ export class JobScheduler {
     this.jobs.clear();
     
     // Register new jobs
+    let successCount = 0;
+    let errorCount = 0;
+    
     jobs.forEach(job => {
       try {
         this.registerJob(job);
+        successCount++;
       } catch (error) {
-        this.logger.error(`Failed to register job '${job.name}': ${error}`);
+        errorCount++;
+        this.logger.error(`❌ Failed to register job '${job.name}': ${error instanceof Error ? error.message : String(error)}`, {
+          jobName: job.name,
+          cronExpression: job.cronExpression,
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
     });
     
-    // Restart the scheduler
-    this.start();
+    this.logger.info(`✅ Scheduler updated: ${successCount} jobs registered successfully, ${errorCount} failed`);
     
-    this.logger.info(`Updated scheduler with ${jobs.length} jobs from YAML configuration`);
+    // Log current timezone and environment info
+    this.logger.info('🌍 Environment Information', {
+      timezone: process.env.TZ || 'America/Chicago',
+      nodeEnv: process.env['NODE_ENV'],
+      currentTime: new Date().toISOString(),
+      currentTimeLocal: new Date().toLocaleString('en-US', { timeZone: process.env.TZ || 'America/Chicago' })
+    });
   }
 
   /**
