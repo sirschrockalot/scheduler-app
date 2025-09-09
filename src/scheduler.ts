@@ -69,7 +69,16 @@ export class JobScheduler {
     // Get timezone - prioritize TZ env var, then default to America/Chicago
     const timezone = process.env.TZ || 'America/Chicago';
     
+    // Log timezone and cron expression for debugging
+    this.logger.info(`🕐 Scheduling job '${config.name}' with timezone: ${timezone}`, {
+      cronExpression: config.cronExpression,
+      timezone: timezone,
+      currentTimeUTC: new Date().toISOString(),
+      currentTimeLocal: new Date().toLocaleString('en-US', { timeZone: timezone })
+    });
+    
     const task = cron.schedule(config.cronExpression, async () => {
+      this.logger.info(`⏰ Job '${config.name}' triggered at: ${new Date().toISOString()} (${new Date().toLocaleString('en-US', { timeZone: timezone })})`);
       await this.executeJob(config);
     }, {
       scheduled: true, // CRITICAL FIX: Set to true so job starts immediately

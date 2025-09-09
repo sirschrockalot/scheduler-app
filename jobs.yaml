@@ -34,7 +34,21 @@ jobs:
     timeout: 15000
     retries: 2
     enabled: true
-    description: "KPI evening report generation at 6:30 PM (using afternoon endpoint)"
+    description: "KPI evening report generation at 6:30 PM"
+
+  # KPI Evening Report Backup - Weekdays at 6:35 PM (5 minutes later)
+  - name: kpi-evening-report-backup
+    schedule: "35 18 * * 1-5"  # Weekdays at 6:35 PM (CST) - Backup
+    url: "https://slack-kpi-service-dbf2f7d60f2e.herokuapp.com/report/night"
+    method: POST
+    headers:
+      Authorization: "Bearer ${JWT_TOKEN}"
+      X-Custom-Header: "kpi-app-backup"
+      Content-Type: "application/json"
+    timeout: 15000
+    retries: 2
+    enabled: true
+    description: "KPI evening report backup at 6:35 PM (5 minutes after primary)"
 
   # Health check job
   - name: health-check-test
