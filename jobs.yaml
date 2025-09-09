@@ -17,7 +17,7 @@ jobs:
       Authorization: "Bearer ${JWT_TOKEN}"
       X-Custom-Header: "kpi-app"
       Content-Type: "application/json"
-    timeout: 15000
+    timeout: 30000
     retries: 2
     enabled: true
     description: "KPI afternoon report generation"
@@ -31,7 +31,7 @@ jobs:
       Authorization: "Bearer ${JWT_TOKEN}"
       X-Custom-Header: "kpi-app"
       Content-Type: "application/json"
-    timeout: 15000
+    timeout: 30000
     retries: 2
     enabled: true
     description: "KPI evening report generation at 6:30 PM"
@@ -45,7 +45,7 @@ jobs:
       Authorization: "Bearer ${JWT_TOKEN}"
       X-Custom-Header: "kpi-app-backup"
       Content-Type: "application/json"
-    timeout: 15000
+    timeout: 30000
     retries: 2
     enabled: true
     description: "KPI evening report backup at 6:35 PM (5 minutes after primary)"
