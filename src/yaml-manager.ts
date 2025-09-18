@@ -74,9 +74,7 @@ export class YamlManager {
     const processedData = this.substituteEnvironmentVariables(yamlJob.data);
     const processedUrl = this.substituteEnvironmentVariables(yamlJob.url);
 
-    const dependsOn: JobDependencyConfig | undefined = this.convertDependency(yamlJob.dependsOn);
-
-    return {
+    const baseConfig: JobConfig = {
       name: yamlJob.name,
       cronExpression: yamlJob.schedule,
       url: processedUrl,
@@ -85,18 +83,23 @@ export class YamlManager {
       data: processedData,
       timeout: yamlJob.timeout || global?.defaultTimeout || 10000,
       retries: yamlJob.retries || global?.defaultRetries || 3,
-      enabled: yamlJob.enabled !== false,
-      dependsOn
+      enabled: yamlJob.enabled !== false
     };
+
+    const dependsOn = this.convertDependency(yamlJob.dependsOn);
+    if (dependsOn) {
+      (baseConfig as any).dependsOn = dependsOn;
+    }
+
+    return baseConfig;
   }
 
   private convertDependency(dep?: YamlJobDependencyConfig): JobDependencyConfig | undefined {
     if (!dep) return undefined;
-    return {
-      job: dep.job,
-      windowMinutes: dep.windowMinutes,
-      condition: dep.condition
-    };
+    const result: any = { job: dep.job };
+    if (dep.windowMinutes !== undefined) result.windowMinutes = dep.windowMinutes;
+    if (dep.condition !== undefined) result.condition = dep.condition;
+    return result as JobDependencyConfig;
   }
 
   /**
