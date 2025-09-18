@@ -8,6 +8,7 @@ export interface JobConfig {
   timeout?: number;
   retries?: number;
   enabled?: boolean;
+  dependsOn?: JobDependencyConfig;
 }
 
 export interface JobResult {
@@ -31,6 +32,7 @@ export interface YamlJobConfig {
   retries?: number;
   enabled?: boolean;
   description?: string;
+  dependsOn?: YamlJobDependencyConfig;
 }
 
 export interface YamlJobFile {
@@ -49,3 +51,23 @@ export interface SchedulerStatus {
   yamlFile?: string;
   lastYamlUpdate?: Date;
 } 
+
+export type JobDependencyCondition = 'not_ran' | 'failed' | 'not_ran_or_failed';
+
+export interface JobDependencyConfig {
+  job: string;
+  windowMinutes?: number; // how far back to look for status
+  condition?: JobDependencyCondition; // default: not_ran_or_failed
+}
+
+export interface YamlJobDependencyConfig {
+  job: string;
+  windowMinutes?: number;
+  condition?: JobDependencyCondition;
+}
+
+export interface JobRuntimeState {
+  lastRunAt: Date | null;
+  lastSuccessAt: Date | null;
+  lastFailureAt: Date | null;
+}

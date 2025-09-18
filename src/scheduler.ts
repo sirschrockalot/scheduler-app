@@ -1,12 +1,13 @@
 import cron from 'node-cron';
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import winston from 'winston';
-import { JobConfig, JobResult, SchedulerStatus } from './types';
+import { JobConfig, JobResult, SchedulerStatus, JobRuntimeState } from './types';
 
 export class JobScheduler {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
   private logger!: winston.Logger;
   private jwtToken: string;
+  private runtimeState: Map<string, JobRuntimeState> = new Map();
 
   constructor() {
     this.jwtToken = process.env['JWT_TOKEN'] || '';
@@ -79,6 +80,13 @@ export class JobScheduler {
     
     const task = cron.schedule(config.cronExpression, async () => {
       this.logger.info(`⏰ Job '${config.name}' triggered at: ${new Date().toISOString()} (${new Date().toLocaleString('en-US', { timeZone: timezone })})`);
+
+      // Check dependency before executing
+      if (!this.shouldRunBasedOnDependency(config)) {
+        this.logger.info(`⏭️  Skipping job '${config.name}' due to dependency condition not met`);
+        return;
+      }
+
       await this.executeJob(config);
     }, {
       scheduled: true, // CRITICAL FIX: Set to true so job starts immediately
@@ -125,6 +133,9 @@ export class JobScheduler {
 
     this.logger.info(`🚀 Starting job: ${config.name}`);
 
+    // Record last run time
+    this.touchRuntimeState(config.name, { lastRunAt: new Date() });
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const result = await this.makeRequest(config, attempt);
@@ -145,6 +156,9 @@ export class JobScheduler {
           executionTime: `${executionTime}ms`
         });
 
+        // Record success
+        this.touchRuntimeState(config.name, { lastSuccessAt: new Date() });
+
         return jobResult;
 
       } catch (error) {
@@ -164,6 +178,9 @@ export class JobScheduler {
             executionTime: `${executionTime}ms`
           });
 
+          // Record failure
+          this.touchRuntimeState(config.name, { lastFailureAt: new Date() });
+
           return {
             success: false,
             jobName: config.name,
@@ -181,6 +198,42 @@ export class JobScheduler {
 
     // This should never be reached, but TypeScript requires it
     throw new Error('Unexpected execution path');
+  }
+
+  private touchRuntimeState(jobName: string, updates: Partial<JobRuntimeState>): void {
+    const current: JobRuntimeState = this.runtimeState.get(jobName) || {
+      lastRunAt: null,
+      lastSuccessAt: null,
+      lastFailureAt: null
+    };
+    const next: JobRuntimeState = { ...current, ...updates };
+    this.runtimeState.set(jobName, next);
+  }
+
+  private shouldRunBasedOnDependency(config: JobConfig): boolean {
+    const dependency = config.dependsOn;
+    if (!dependency) return true;
+
+    const condition = dependency.condition || 'not_ran_or_failed';
+    const windowMinutes = dependency.windowMinutes ?? 180; // default 3 hours
+    const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000);
+
+    const depState = this.runtimeState.get(dependency.job);
+    // If we have no state yet, treat as not ran
+    const depLastRun = depState?.lastRunAt || null;
+    const depLastSuccess = depState?.lastSuccessAt || null;
+
+    const ranInWindow = depLastRun ? depLastRun >= windowStart : false;
+    const succeededInWindow = depLastSuccess ? depLastSuccess >= windowStart : false;
+
+    if (condition === 'not_ran') {
+      return !ranInWindow;
+    }
+    if (condition === 'failed') {
+      return ranInWindow && !succeededInWindow;
+    }
+    // not_ran_or_failed
+    return (!ranInWindow) || (ranInWindow && !succeededInWindow);
   }
 
   /**

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as chokidar from 'chokidar';
-import { YamlJobFile, YamlJobConfig, JobConfig } from './types';
+import { YamlJobFile, YamlJobConfig, JobConfig, YamlJobDependencyConfig, JobDependencyConfig } from './types';
 
 export class YamlManager {
   private yamlFilePath: string;
@@ -74,6 +74,8 @@ export class YamlManager {
     const processedData = this.substituteEnvironmentVariables(yamlJob.data);
     const processedUrl = this.substituteEnvironmentVariables(yamlJob.url);
 
+    const dependsOn: JobDependencyConfig | undefined = this.convertDependency(yamlJob.dependsOn);
+
     return {
       name: yamlJob.name,
       cronExpression: yamlJob.schedule,
@@ -83,7 +85,17 @@ export class YamlManager {
       data: processedData,
       timeout: yamlJob.timeout || global?.defaultTimeout || 10000,
       retries: yamlJob.retries || global?.defaultRetries || 3,
-      enabled: yamlJob.enabled !== false
+      enabled: yamlJob.enabled !== false,
+      dependsOn
+    };
+  }
+
+  private convertDependency(dep?: YamlJobDependencyConfig): JobDependencyConfig | undefined {
+    if (!dep) return undefined;
+    return {
+      job: dep.job,
+      windowMinutes: dep.windowMinutes,
+      condition: dep.condition
     };
   }
 

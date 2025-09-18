@@ -49,6 +49,10 @@ jobs:
     retries: 2
     enabled: true
     description: "KPI evening report backup at 6:35 PM (5 minutes after primary)"
+    dependsOn:
+      job: kpi-evening-report
+      windowMinutes: 20  # look back 20 minutes to confirm primary ran and succeeded
+      condition: not_ran_or_failed
 
   # Health check job
   - name: health-check-test
