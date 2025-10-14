@@ -88,6 +88,11 @@ Required environment variables for Heroku:
 - `LOG_LEVEL` - Logging level (default: info)
 - `NODE_ENV` - Node environment (default: production)
 
+Optional for automatic JWT rotation:
+- `JWT_SECRET` - If set, the scheduler auto-generates JWTs and refreshes them before expiry; overrides `JWT_TOKEN`
+- `JWT_TTL_SECONDS` - Lifetime of generated tokens in seconds (default: 60 days)
+- `JWT_REFRESH_BUFFER_SECONDS` - Refresh if token expires within this many seconds (default: 3600)
+
 ## 📊 Job Configuration
 
 Jobs are configured in `jobs.yaml`:

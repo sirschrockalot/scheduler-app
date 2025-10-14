@@ -2,18 +2,26 @@ import cron from 'node-cron';
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import winston from 'winston';
 import { JobConfig, JobResult, SchedulerStatus, JobRuntimeState } from './types';
+import { TokenManager } from './token-manager';
 
 export class JobScheduler {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
   private logger!: winston.Logger;
   private jwtToken: string;
   private runtimeState: Map<string, JobRuntimeState> = new Map();
+  private tokenManager: TokenManager | null = null;
 
   constructor() {
     this.jwtToken = process.env['JWT_TOKEN'] || '';
     
     if (!this.jwtToken) {
-      throw new Error('JWT_TOKEN environment variable is required');
+      // If JWT_TOKEN not provided, try TokenManager with JWT_SECRET
+      if (process.env['JWT_SECRET']) {
+        this.tokenManager = new TokenManager();
+        this.jwtToken = this.tokenManager.getToken();
+      } else {
+        throw new Error('JWT_TOKEN environment variable is required');
+      }
     }
 
     this.setupLogger();
@@ -240,12 +248,14 @@ export class JobScheduler {
    * Make HTTP request with JWT authentication
    */
   private async makeRequest(config: JobConfig, attempt: number): Promise<AxiosResponse> {
+    // Prefer dynamic token if TokenManager is enabled
+    const authToken = this.tokenManager ? this.tokenManager.getToken() : this.jwtToken;
     const requestConfig: AxiosRequestConfig = {
       method: config.method,
       url: config.url,
       timeout: config.timeout || 30000,
       headers: {
-        'Authorization': `Bearer ${this.jwtToken}`,
+        'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json',
         'User-Agent': 'JobScheduler/1.0.0',
         ...config.headers
