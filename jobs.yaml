@@ -19,7 +19,7 @@ jobs:
       Content-Type: "application/json"
     timeout: 30000
     retries: 2
-    enabled: true
+    enabled: false
     description: "KPI afternoon report generation"
 
   # KPI Evening Report - Weekdays at 6:30 PM
@@ -53,6 +53,22 @@ jobs:
       job: kpi-evening-report
       windowMinutes: 20  # look back 20 minutes to confirm primary ran and succeeded
       condition: not_ran_or_failed
+
+  # KPI Weekly Average Report - Fridays at 6:45 PM (end of week)
+  - name: kpi-weekly-avg-report
+    schedule: "45 18 * * 5"  # Fridays at 6:45 PM (CST) - End of week
+    url: "https://slack-kpi-service-dbf2f7d60f2e.herokuapp.com/report/weekly-avg"
+    method: POST
+    headers:
+      Authorization: "Bearer ${JWT_TOKEN}"
+      X-Custom-Header: "kpi-app"
+      Content-Type: "application/json"
+    data:
+      weekRange: "current"  # Current week Monday-Friday
+    timeout: 30000
+    retries: 2
+    enabled: true
+    description: "KPI weekly average report for current week (Monday-Friday) at end of week"
 
   # Health check job
   - name: health-check-test

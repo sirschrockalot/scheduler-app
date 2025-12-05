@@ -245,6 +245,79 @@ export class JobScheduler {
   }
 
   /**
+   * Calculate the current week's Monday-Friday date range
+   */
+  private getCurrentWeekRange(): { startDate: string; endDate: string } {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust to get Monday
+    
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diff);
+    monday.setHours(0, 0, 0, 0);
+    
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4); // Friday is 4 days after Monday
+    friday.setHours(23, 59, 59, 999);
+    
+    // Format as YYYY-MM-DD
+    const formatDate = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    return {
+      startDate: formatDate(monday),
+      endDate: formatDate(friday)
+    };
+  }
+
+  /**
+   * Process data field to replace date placeholders with calculated values
+   */
+  private processDataField(data: any): any {
+    if (data === null || data === undefined) {
+      return data;
+    }
+    
+    if (typeof data === 'string') {
+      // Check for date placeholders
+      if (data === '${CURRENT_WEEK_START}' || data === 'current_week_start') {
+        return this.getCurrentWeekRange().startDate;
+      }
+      if (data === '${CURRENT_WEEK_END}' || data === 'current_week_end') {
+        return this.getCurrentWeekRange().endDate;
+      }
+      return data;
+    }
+    
+    if (Array.isArray(data)) {
+      return data.map(item => this.processDataField(item));
+    }
+    
+    if (typeof data === 'object') {
+      const processed: any = {};
+      for (const [key, value] of Object.entries(data)) {
+        processed[key] = this.processDataField(value);
+      }
+      
+      // Special handling for weekRange: "current"
+      if (processed.weekRange === 'current') {
+        const weekRange = this.getCurrentWeekRange();
+        processed.startDate = weekRange.startDate;
+        processed.endDate = weekRange.endDate;
+        delete processed.weekRange; // Remove the placeholder
+      }
+      
+      return processed;
+    }
+    
+    return data;
+  }
+
+  /**
    * Make HTTP request with JWT authentication
    */
   private async makeRequest(config: JobConfig, attempt: number): Promise<AxiosResponse> {
@@ -263,7 +336,13 @@ export class JobScheduler {
     };
 
     if (config.data && ['POST', 'PUT', 'PATCH'].includes(config.method)) {
-      requestConfig.data = config.data;
+      // Process data field to calculate dates dynamically
+      requestConfig.data = this.processDataField(config.data);
+      
+      this.logger.debug(`Request data for job '${config.name}':`, {
+        jobName: config.name,
+        data: requestConfig.data
+      });
     }
 
     this.logger.debug(`Making ${config.method} request to ${config.url}`, {
