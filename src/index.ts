@@ -8,8 +8,9 @@ import { createServer } from 'http';
 dotenv.config();
 
 // Validate required environment variables
-if (!process.env['JWT_TOKEN']) {
-  console.error('❌ JWT_TOKEN environment variable is required');
+// Either JWT_TOKEN or JWT_SECRET must be set
+if (!process.env['JWT_TOKEN'] && !process.env['JWT_SECRET']) {
+  console.error('❌ Either JWT_TOKEN or JWT_SECRET environment variable is required');
   process.exit(1);
 }
 
