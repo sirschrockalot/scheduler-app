@@ -323,6 +323,10 @@ export class JobScheduler {
   private async makeRequest(config: JobConfig, attempt: number): Promise<AxiosResponse> {
     // Prefer dynamic token if TokenManager is enabled
     const authToken = this.tokenManager ? this.tokenManager.getToken() : this.jwtToken;
+    
+    // Exclude Authorization from config headers since we set it explicitly
+    const { Authorization, ...otherHeaders } = config.headers || {};
+    
     const requestConfig: AxiosRequestConfig = {
       method: config.method,
       url: config.url,
@@ -331,7 +335,7 @@ export class JobScheduler {
         'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json',
         'User-Agent': 'JobScheduler/1.0.0',
-        ...config.headers
+        ...otherHeaders
       }
     };
 
