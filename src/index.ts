@@ -3,9 +3,35 @@ import { JobScheduler } from './scheduler';
 import { JobConfig } from './types';
 import { YamlManager } from './yaml-manager';
 import { createServer } from 'http';
+import { decryptEnvSecret } from './secret-manager';
 
 // Load environment variables
 dotenv.config();
+
+// Optionally decrypt encrypted secrets into process.env before anything else uses them.
+// This allows you to store encrypted values in your config (e.g. Heroku, .env).
+const ENCRYPTION_KEY_ENV = 'JWT_ENCRYPTION_KEY';
+
+type EncryptedMapping = {
+  encryptedVar: string;
+  plainVar: string;
+};
+
+const encryptedMappings: EncryptedMapping[] = [
+  { encryptedVar: 'ENCRYPTED_JWT_TOKEN', plainVar: 'JWT_TOKEN' },
+  { encryptedVar: 'ENCRYPTED_AIRCALL_API_TOKEN', plainVar: 'AIRCALL_API_TOKEN' },
+  { encryptedVar: 'ENCRYPTED_SLACK_API_TOKEN', plainVar: 'SLACK_API_TOKEN' }
+];
+
+for (const mapping of encryptedMappings) {
+  // Only attempt decryption if the plain var isn't already set
+  if (!process.env[mapping.plainVar]) {
+    const decrypted = decryptEnvSecret(mapping.encryptedVar, ENCRYPTION_KEY_ENV);
+    if (decrypted) {
+      process.env[mapping.plainVar] = decrypted;
+    }
+  }
+}
 
 // Validate required environment variables
 // Either JWT_TOKEN or JWT_SECRET must be set

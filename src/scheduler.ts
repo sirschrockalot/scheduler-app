@@ -349,10 +349,20 @@ export class JobScheduler {
       });
     }
 
+    // Never log raw Authorization headers; redact any sensitive values.
+    const safeHeaders: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(requestConfig.headers || {})) {
+      if (key.toLowerCase() === 'authorization') {
+        safeHeaders[key] = '*** REDACTED ***';
+      } else {
+        safeHeaders[key] = value;
+      }
+    }
+
     this.logger.debug(`Making ${config.method} request to ${config.url}`, {
       jobName: config.name,
       attempt,
-      headers: requestConfig.headers
+      headers: safeHeaders
     });
 
     return axios(requestConfig);
