@@ -39,6 +39,18 @@ The nightly job has been failing to run consistently. Here's what we've identifi
 - Better error messages for debugging
 - Comprehensive logging for troubleshooting
 
+### 4. On-Demand Trigger Endpoint (Reliability Backup)
+- **POST or GET** `https://your-scheduler-app.herokuapp.com/trigger/night` runs the nightly KPI report immediately.
+- Use **Heroku Scheduler** to call this URL at 6:30 PM CST so the job runs even if the web dyno was asleep or restarted:
+  1. In Heroku Dashboard: App → Resources → Add-ons → **Heroku Scheduler** (free).
+  2. Open Scheduler → Create job → **Command**: `curl -X POST https://job-scheduler-app-1756835627.herokuapp.com/trigger/night`
+  3. Set frequency to **Daily** and time to **6:30 PM** (choose your app’s timezone; use America/Chicago for CST).
+- The in-process cron still runs at 6:30 PM when the dyno is up; the Scheduler job is a backup that also wakes the dyno.
+
+### 5. Timeout and Retries
+- Nightly jobs use **45s timeout** and **3 retries** to tolerate Slack-KPI-Service cold start or slow responses.
+- If you see `Request failed with status code 500` or `timeout of ... exceeded`, the failure is in **Slack-KPI-Service**; check that app’s Heroku logs and config.
+
 ## Required Heroku Configuration:
 
 ### Environment Variables (CRITICAL):

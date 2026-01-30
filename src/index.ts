@@ -42,6 +42,8 @@ if (!process.env['JWT_TOKEN'] && !process.env['JWT_SECRET']) {
 
 // Create scheduler instance
 const scheduler = new JobScheduler();
+// So YAML env substitution finds JWT_TOKEN when using JWT_SECRET (scheduler injects token in requests either way)
+process.env['JWT_TOKEN'] = scheduler.getAuthToken();
 const yamlManager = new YamlManager();
 
 // Create simple HTTP server for health checks
@@ -88,6 +90,28 @@ const server = createServer((req, res) => {
       totalJobs: jobNames.length,
       currentTime: new Date().toISOString()
     }, null, 2));
+  } else if (req.url?.startsWith('/trigger/night') && (req.method === 'POST' || req.method === 'GET')) {
+    // Run nightly KPI report on demand (for Heroku Scheduler or manual trigger)
+    scheduler.runJobByName('kpi-evening-report')
+      .then((result) => {
+        if (result === null) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Job kpi-evening-report not found' }));
+          return;
+        }
+        const status = result.success ? 200 : 502;
+        res.writeHead(status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          triggered: true,
+          jobName: result.jobName,
+          success: result.success,
+          ...(result.success ? { statusCode: result.statusCode, executionTime: result.executionTime } : { error: result.error, executionTime: result.executionTime })
+        }, null, 2));
+      })
+      .catch((err) => {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: String(err) }));
+      });
   } else {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found' }));

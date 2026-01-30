@@ -6,6 +6,7 @@ import { TokenManager } from './token-manager';
 
 export class JobScheduler {
   private jobs: Map<string, cron.ScheduledTask> = new Map();
+  private jobConfigs: Map<string, JobConfig> = new Map();
   private logger!: winston.Logger;
   private jwtToken: string;
   private runtimeState: Map<string, JobRuntimeState> = new Map();
@@ -102,6 +103,7 @@ export class JobScheduler {
     });
 
     this.jobs.set(config.name, task);
+    this.jobConfigs.set(config.name, config);
     this.logger.info(`✅ Job '${config.name}' registered and STARTED with cron expression: ${config.cronExpression}`, {
       timezone: timezone,
       nodeEnv: process.env['NODE_ENV'],
@@ -169,21 +171,34 @@ export class JobScheduler {
 
         return jobResult;
 
-      } catch (error) {
+      } catch (error: unknown) {
         lastError = error instanceof Error ? error.message : String(error);
-        
+        const axiosErr = error as { response?: { status?: number; data?: unknown } };
+        const statusCode = axiosErr.response?.status;
+        const responseBody = axiosErr.response?.data;
+        const bodySnippet =
+          responseBody !== undefined
+            ? typeof responseBody === 'string'
+              ? responseBody.slice(0, 500)
+              : JSON.stringify(responseBody).slice(0, 500)
+            : undefined;
+
         this.logger.warn(`🔄 Job '${config.name}' attempt ${attempt}/${maxRetries} failed`, {
           error: lastError,
-          attempt
+          attempt,
+          ...(statusCode !== undefined && { statusCode }),
+          ...(bodySnippet !== undefined && { responseSnippet: bodySnippet })
         });
 
         if (attempt === maxRetries) {
           const executionTime = Date.now() - startTime;
-          
+
           this.logger.error(`❌ Job '${config.name}' failed after ${maxRetries} attempts`, {
             error: lastError,
             totalAttempts: maxRetries,
-            executionTime: `${executionTime}ms`
+            executionTime: `${executionTime}ms`,
+            ...(statusCode !== undefined && { statusCode }),
+            ...(bodySnippet !== undefined && { responseSnippet: bodySnippet })
           });
 
           // Record failure
@@ -423,10 +438,27 @@ export class JobScheduler {
     if (task) {
       task.stop();
       this.jobs.delete(jobName);
+      this.jobConfigs.delete(jobName);
       this.logger.info(`🗑️ Removed job: ${jobName}`);
       return true;
     }
     return false;
+  }
+
+  /**
+   * Get the current auth token (for env substitution / debugging). Do not log or expose.
+   */
+  public getAuthToken(): string {
+    return this.tokenManager ? this.tokenManager.getToken() : this.jwtToken;
+  }
+
+  /**
+   * Run a job by name (for HTTP trigger / Heroku Scheduler). Returns null if job not found.
+   */
+  public async runJobByName(name: string): Promise<JobResult | null> {
+    const config = this.jobConfigs.get(name);
+    if (!config) return null;
+    return this.executeJob(config);
   }
 
   /**
@@ -452,8 +484,9 @@ export class JobScheduler {
     // Stop all existing jobs
     this.stop();
     
-    // Clear existing jobs
+    // Clear existing jobs and configs
     this.jobs.clear();
+    this.jobConfigs.clear();
     
     // Register new jobs
     let successCount = 0;

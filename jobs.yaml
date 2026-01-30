@@ -31,8 +31,8 @@ jobs:
       Authorization: "Bearer ${JWT_TOKEN}"
       X-Custom-Header: "kpi-app"
       Content-Type: "application/json"
-    timeout: 30000
-    retries: 2
+    timeout: 45000
+    retries: 3
     enabled: true
     description: "KPI evening report generation at 6:30 PM"
 
@@ -45,8 +45,8 @@ jobs:
       Authorization: "Bearer ${JWT_TOKEN}"
       X-Custom-Header: "kpi-app-backup"
       Content-Type: "application/json"
-    timeout: 30000
-    retries: 2
+    timeout: 45000
+    retries: 3
     enabled: true
     description: "KPI evening report backup at 6:35 PM (5 minutes after primary)"
     dependsOn:
@@ -65,8 +65,8 @@ jobs:
       Content-Type: "application/json"
     data:
       weekRange: "current"  # Current week Monday-Friday
-    timeout: 30000
-    retries: 2
+    timeout: 45000
+    retries: 3
     enabled: true
     description: "KPI weekly average report for current week (Monday-Friday) at end of week"
 
